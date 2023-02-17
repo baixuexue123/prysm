@@ -246,22 +246,15 @@ func ComputeFieldRootsWithHasher(ctx context.Context, state *BeaconState) ([][]b
 		}
 		fieldRoots[nativetypes.LatestExecutionPayloadHeaderCapella.RealPosition()] = executionPayloadRoot[:]
 
-		// Withdrawal queue root.
-		withdrawalQueueRoot, err := ssz.WithdrawalSliceRoot(hasher, state.withdrawalQueue, fieldparams.WithdrawalQueueLimit)
-		if err != nil {
-			return nil, err
-		}
-		fieldRoots[nativetypes.WithdrawalQueue.RealPosition()] = withdrawalQueueRoot[:]
-
 		// Next withdrawal index root.
 		nextWithdrawalIndexRoot := make([]byte, 32)
 		binary.LittleEndian.PutUint64(nextWithdrawalIndexRoot, state.nextWithdrawalIndex)
 		fieldRoots[nativetypes.NextWithdrawalIndex.RealPosition()] = nextWithdrawalIndexRoot
 
 		// Next partial withdrawal validator index root.
-		nextPartialWithdrawalValidatorIndexRoot := make([]byte, 32)
-		binary.LittleEndian.PutUint64(nextPartialWithdrawalValidatorIndexRoot, uint64(state.nextPartialWithdrawalValidatorIndex))
-		fieldRoots[nativetypes.NextPartialWithdrawalValidatorIndex.RealPosition()] = nextPartialWithdrawalValidatorIndexRoot
+		nextWithdrawalValidatorIndexRoot := make([]byte, 32)
+		binary.LittleEndian.PutUint64(nextWithdrawalValidatorIndexRoot, uint64(state.nextWithdrawalValidatorIndex))
+		fieldRoots[nativetypes.NextWithdrawalValidatorIndex.RealPosition()] = nextWithdrawalValidatorIndexRoot
 	}
 
 	return fieldRoots, nil

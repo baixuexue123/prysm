@@ -275,7 +275,7 @@ func (f *ForkChoice) IsOptimistic(root [32]byte) (bool, error) {
 
 // AncestorRoot returns the ancestor root of input block root at a given slot.
 func (f *ForkChoice) AncestorRoot(ctx context.Context, root [32]byte, slot types.Slot) ([32]byte, error) {
-	ctx, span := trace.StartSpan(ctx, "protoArray.AncestorRoot")
+	ctx, span := trace.StartSpan(ctx, "doublyLinkedForkchoice.AncestorRoot")
 	defer span.End()
 
 	f.store.nodesLock.RLock()
@@ -493,7 +493,7 @@ func (f *ForkChoice) UpdateFinalizedCheckpoint(fc *forkchoicetypes.Checkpoint) e
 
 // CommonAncestor returns the common ancestor root and slot between the two block roots r1 and r2.
 func (f *ForkChoice) CommonAncestor(ctx context.Context, r1 [32]byte, r2 [32]byte) ([32]byte, types.Slot, error) {
-	ctx, span := trace.StartSpan(ctx, "doublelinkedtree.CommonAncestorRoot")
+	ctx, span := trace.StartSpan(ctx, "doublyLinkedForkchoice.CommonAncestorRoot")
 	defer span.End()
 
 	f.store.nodesLock.RLock()
@@ -616,8 +616,8 @@ func (f *ForkChoice) JustifiedPayloadBlockHash() [32]byte {
 	return node.payloadHash
 }
 
-// ForkChoiceDump returns a full dump of forkhoice.
-func (f *ForkChoice) ForkChoiceDump(ctx context.Context) (*v1.ForkChoiceResponse, error) {
+// ForkChoiceDump returns a full dump of forkchoice.
+func (f *ForkChoice) ForkChoiceDump(ctx context.Context) (*v1.ForkChoiceDump, error) {
 	jc := &v1.Checkpoint{
 		Epoch: f.store.justifiedCheckpoint.Epoch,
 		Root:  f.store.justifiedCheckpoint.Root[:],
@@ -650,7 +650,7 @@ func (f *ForkChoice) ForkChoiceDump(ctx context.Context) (*v1.ForkChoiceResponse
 	if f.store.headNode != nil {
 		headRoot = f.store.headNode.root
 	}
-	resp := &v1.ForkChoiceResponse{
+	resp := &v1.ForkChoiceDump{
 		JustifiedCheckpoint:           jc,
 		BestJustifiedCheckpoint:       bjc,
 		UnrealizedJustifiedCheckpoint: ujc,
@@ -659,7 +659,7 @@ func (f *ForkChoice) ForkChoiceDump(ctx context.Context) (*v1.ForkChoiceResponse
 		ProposerBoostRoot:             f.store.proposerBoostRoot[:],
 		PreviousProposerBoostRoot:     f.store.previousProposerBoostRoot[:],
 		HeadRoot:                      headRoot[:],
-		ForkchoiceNodes:               nodes,
+		ForkChoiceNodes:               nodes,
 	}
 	return resp, nil
 

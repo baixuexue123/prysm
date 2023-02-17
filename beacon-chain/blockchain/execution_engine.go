@@ -71,7 +71,6 @@ func (s *Service) notifyForkchoiceUpdate(ctx context.Context, arg *notifyForkcho
 	hasAttr, attr, proposerId, err := s.getPayloadAttribute(ctx, arg.headState, nextSlot)
 	if err != nil {
 		log.WithError(err).Error("Could not get head payload attribute")
-		return nil, nil
 	}
 
 	payloadID, lastValidHash, err := s.cfg.ExecutionEngineCaller.ForkchoiceUpdated(ctx, fcs, attr)
@@ -181,7 +180,7 @@ func (s *Service) getPayloadHash(ctx context.Context, root []byte) ([32]byte, er
 	return bytesutil.ToBytes32(payload.BlockHash()), nil
 }
 
-// notifyForkchoiceUpdate signals execution engine on a new payload.
+// notifyNewPayload signals execution engine on a new payload.
 // It returns true if the EL has returned VALID for the block
 func (s *Service) notifyNewPayload(ctx context.Context, postStateVersion int,
 	postStateHeader interfaces.ExecutionData, blk interfaces.SignedBeaconBlock) (bool, error) {
