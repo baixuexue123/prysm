@@ -1,8 +1,8 @@
 package eth
 
 import (
-	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
-	enginev1 "github.com/prysmaticlabs/prysm/v3/proto/engine/v1"
+	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
+	enginev1 "github.com/prysmaticlabs/prysm/v4/proto/engine/v1"
 )
 
 // CopyETH1Data copies the provided eth1data object.
@@ -672,10 +672,10 @@ func CopyWithdrawal(withdrawal *enginev1.Withdrawal) *enginev1.Withdrawal {
 	}
 
 	return &enginev1.Withdrawal{
-		WithdrawalIndex:  withdrawal.WithdrawalIndex,
-		ValidatorIndex:   withdrawal.ValidatorIndex,
-		ExecutionAddress: bytesutil.SafeCopyBytes(withdrawal.ExecutionAddress),
-		Amount:           withdrawal.Amount,
+		Index:          withdrawal.Index,
+		ValidatorIndex: withdrawal.ValidatorIndex,
+		Address:        bytesutil.SafeCopyBytes(withdrawal.Address),
+		Amount:         withdrawal.Amount,
 	}
 }
 
@@ -697,4 +697,19 @@ func CopyBLSToExecutionChanges(changes []*SignedBLSToExecutionChange) []*SignedB
 	}
 
 	return res
+}
+
+// CopyHistoricalSummaries copies the historical summaries.
+func CopyHistoricalSummaries(summaries []*HistoricalSummary) []*HistoricalSummary {
+	if summaries == nil {
+		return nil
+	}
+	newSummaries := make([]*HistoricalSummary, len(summaries))
+	for i, s := range summaries {
+		newSummaries[i] = &HistoricalSummary{
+			BlockSummaryRoot: bytesutil.SafeCopyBytes(s.BlockSummaryRoot),
+			StateSummaryRoot: bytesutil.SafeCopyBytes(s.StateSummaryRoot),
+		}
+	}
+	return newSummaries
 }

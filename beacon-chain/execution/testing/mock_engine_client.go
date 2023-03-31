@@ -8,12 +8,15 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/holiman/uint256"
 	"github.com/pkg/errors"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
-	"github.com/prysmaticlabs/prysm/v3/consensus-types/blocks"
-	"github.com/prysmaticlabs/prysm/v3/consensus-types/interfaces"
-	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
-	"github.com/prysmaticlabs/prysm/v3/proto/builder"
-	pb "github.com/prysmaticlabs/prysm/v3/proto/engine/v1"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/blocks"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/interfaces"
+	payloadattribute "github.com/prysmaticlabs/prysm/v4/consensus-types/payload-attribute"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
+	"github.com/prysmaticlabs/prysm/v4/proto/builder"
+	pb "github.com/prysmaticlabs/prysm/v4/proto/engine/v1"
+	"github.com/prysmaticlabs/prysm/v4/time/slots"
 )
 
 // EngineClient --
@@ -23,6 +26,7 @@ type EngineClient struct {
 	PayloadIDBytes              *pb.PayloadIDBytes
 	ForkChoiceUpdatedResp       []byte
 	ExecutionPayload            *pb.ExecutionPayload
+	ExecutionPayloadCapella     *pb.ExecutionPayloadCapella
 	ExecutionBlock              *pb.ExecutionBlock
 	Err                         error
 	ErrBuilderPayload           error
@@ -37,10 +41,16 @@ type EngineClient struct {
 	TerminalBlockHash           []byte
 	TerminalBlockHashExists     bool
 	OverrideValidHash           [32]byte
+	BlockValue                  *big.Int
 }
 
 // PayloadAttributes --
 func (e *EngineClient) PayloadAttributes(_ context.Context, _ *builder.BuilderPayloadAttributes) ([]byte, error) {
+	return e.NewPayloadResp, e.ErrNewPayload
+}
+
+// PayloadAttributesV2 --
+func (e *EngineClient) PayloadAttributesV2(_ context.Context, _ *builder.BuilderPayloadAttributesV2) ([]byte, error) {
 	return e.NewPayloadResp, e.ErrNewPayload
 }
 
@@ -51,7 +61,7 @@ func (e *EngineClient) NewPayload(_ context.Context, _ interfaces.ExecutionData)
 
 // ForkchoiceUpdated --
 func (e *EngineClient) ForkchoiceUpdated(
-	_ context.Context, fcs *pb.ForkchoiceState, _ *pb.PayloadAttributes,
+	_ context.Context, fcs *pb.ForkchoiceState, _ payloadattribute.Attributer,
 ) (*pb.PayloadIDBytes, []byte, error) {
 	if e.OverrideValidHash != [32]byte{} && bytesutil.ToBytes32(fcs.HeadBlockHash) == e.OverrideValidHash {
 		return e.PayloadIDBytes, e.ForkChoiceUpdatedResp, nil
@@ -60,8 +70,15 @@ func (e *EngineClient) ForkchoiceUpdated(
 }
 
 // GetPayload --
-func (e *EngineClient) GetPayload(_ context.Context, _ [8]byte) (*pb.ExecutionPayload, error) {
-	return e.ExecutionPayload, e.ErrGetPayload
+func (e *EngineClient) GetPayload(_ context.Context, _ [8]byte, s primitives.Slot) (interfaces.ExecutionData, error) {
+	if slots.ToEpoch(s) >= params.BeaconConfig().CapellaForkEpoch {
+		return blocks.WrappedExecutionPayloadCapella(e.ExecutionPayloadCapella, e.BlockValue)
+	}
+	p, err := blocks.WrappedExecutionPayload(e.ExecutionPayload)
+	if err != nil {
+		return nil, err
+	}
+	return p, e.ErrGetPayload
 }
 
 // ExchangeTransitionConfiguration --
@@ -83,8 +100,9 @@ func (e *EngineClient) ExecutionBlockByHash(_ context.Context, h common.Hash, _ 
 	return b, e.ErrExecBlockByHash
 }
 
-func (e *EngineClient) ReconstructFullBellatrixBlock(
-	_ context.Context, blindedBlock interfaces.SignedBeaconBlock,
+// ReconstructFullBlock --
+func (e *EngineClient) ReconstructFullBlock(
+	_ context.Context, blindedBlock interfaces.ReadOnlySignedBeaconBlock,
 ) (interfaces.SignedBeaconBlock, error) {
 	if !blindedBlock.Block().IsBlinded() {
 		return nil, errors.New("block must be blinded")
@@ -101,12 +119,13 @@ func (e *EngineClient) ReconstructFullBellatrixBlock(
 	return blocks.BuildSignedBeaconBlockFromExecutionPayload(blindedBlock, payload)
 }
 
+// ReconstructFullBellatrixBlockBatch --
 func (e *EngineClient) ReconstructFullBellatrixBlockBatch(
-	ctx context.Context, blindedBlocks []interfaces.SignedBeaconBlock,
+	ctx context.Context, blindedBlocks []interfaces.ReadOnlySignedBeaconBlock,
 ) ([]interfaces.SignedBeaconBlock, error) {
 	fullBlocks := make([]interfaces.SignedBeaconBlock, 0, len(blindedBlocks))
 	for _, b := range blindedBlocks {
-		newBlock, err := e.ReconstructFullBellatrixBlock(ctx, b)
+		newBlock, err := e.ReconstructFullBlock(ctx, b)
 		if err != nil {
 			return nil, err
 		}

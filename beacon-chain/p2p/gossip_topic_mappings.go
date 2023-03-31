@@ -3,9 +3,9 @@ package p2p
 import (
 	"reflect"
 
-	"github.com/prysmaticlabs/prysm/v3/config/params"
-	types "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	ethpb "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -25,7 +25,7 @@ var gossipTopicMappings = map[string]proto.Message{
 
 // GossipTopicMappings is a function to return the assigned data type
 // versioned by epoch.
-func GossipTopicMappings(topic string, epoch types.Epoch) proto.Message {
+func GossipTopicMappings(topic string, epoch primitives.Epoch) proto.Message {
 	if topic == BlockSubnetTopicFormat {
 		if epoch >= params.BeaconConfig().CapellaForkEpoch {
 			return &ethpb.SignedBeaconBlockCapella{}

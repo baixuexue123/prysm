@@ -6,17 +6,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prysmaticlabs/prysm/v3/async/event"
-	mock "github.com/prysmaticlabs/prysm/v3/beacon-chain/blockchain/testing"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/feed"
-	statefeed "github.com/prysmaticlabs/prysm/v3/beacon-chain/core/feed/state"
-	dbtest "github.com/prysmaticlabs/prysm/v3/beacon-chain/db/testing"
-	mockslasher "github.com/prysmaticlabs/prysm/v3/beacon-chain/slasher/mock"
-	mockSync "github.com/prysmaticlabs/prysm/v3/beacon-chain/sync/initial-sync/testing"
-	types "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	"github.com/prysmaticlabs/prysm/v3/testing/require"
-	"github.com/prysmaticlabs/prysm/v3/testing/util"
-	"github.com/prysmaticlabs/prysm/v3/time/slots"
+	"github.com/prysmaticlabs/prysm/v4/async/event"
+	mock "github.com/prysmaticlabs/prysm/v4/beacon-chain/blockchain/testing"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/feed"
+	statefeed "github.com/prysmaticlabs/prysm/v4/beacon-chain/core/feed/state"
+	dbtest "github.com/prysmaticlabs/prysm/v4/beacon-chain/db/testing"
+	mockslasher "github.com/prysmaticlabs/prysm/v4/beacon-chain/slasher/mock"
+	mockSync "github.com/prysmaticlabs/prysm/v4/beacon-chain/sync/initial-sync/testing"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	"github.com/prysmaticlabs/prysm/v4/testing/require"
+	"github.com/prysmaticlabs/prysm/v4/testing/util"
+	"github.com/prysmaticlabs/prysm/v4/time/slots"
 	"github.com/sirupsen/logrus"
 	logTest "github.com/sirupsen/logrus/hooks/test"
 )
@@ -36,7 +36,7 @@ func TestService_StartStop_ChainInitialized(t *testing.T) {
 	hook := logTest.NewGlobal()
 	beaconState, err := util.NewBeaconState()
 	require.NoError(t, err)
-	currentSlot := types.Slot(4)
+	currentSlot := primitives.Slot(4)
 	require.NoError(t, beaconState.SetSlot(currentSlot))
 	mockChain := &mock.ChainService{
 		State: beaconState,

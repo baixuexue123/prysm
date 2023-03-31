@@ -5,16 +5,16 @@ import (
 	"sort"
 
 	"github.com/pkg/errors"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/helpers"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/state"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
-	types "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	"github.com/prysmaticlabs/prysm/v3/container/slice"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
-	"github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1/attestation"
-	"github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1/slashings"
-	"github.com/prysmaticlabs/prysm/v3/runtime/version"
-	"github.com/prysmaticlabs/prysm/v3/time/slots"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/helpers"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/state"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	"github.com/prysmaticlabs/prysm/v4/container/slice"
+	ethpb "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1/attestation"
+	"github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1/slashings"
+	"github.com/prysmaticlabs/prysm/v4/runtime/version"
+	"github.com/prysmaticlabs/prysm/v4/time/slots"
 )
 
 // ProcessAttesterSlashings is one of the operations performed
@@ -72,7 +72,7 @@ func ProcessAttesterSlashing(
 	var slashedAny bool
 	var val state.ReadOnlyValidator
 	for _, validatorIndex := range slashableIndices {
-		val, err = beaconState.ValidatorAtIndexReadOnly(types.ValidatorIndex(validatorIndex))
+		val, err = beaconState.ValidatorAtIndexReadOnly(primitives.ValidatorIndex(validatorIndex))
 		if err != nil {
 			return nil, err
 		}
@@ -84,12 +84,12 @@ func ProcessAttesterSlashing(
 				slashingQuotient = cfg.MinSlashingPenaltyQuotient
 			case beaconState.Version() == version.Altair:
 				slashingQuotient = cfg.MinSlashingPenaltyQuotientAltair
-			case beaconState.Version() == version.Bellatrix, beaconState.Version() == version.Capella:
+			case beaconState.Version() >= version.Bellatrix:
 				slashingQuotient = cfg.MinSlashingPenaltyQuotientBellatrix
 			default:
 				return nil, errors.New("unknown state version")
 			}
-			beaconState, err = slashFunc(ctx, beaconState, types.ValidatorIndex(validatorIndex), slashingQuotient, cfg.ProposerRewardQuotient)
+			beaconState, err = slashFunc(ctx, beaconState, primitives.ValidatorIndex(validatorIndex), slashingQuotient, cfg.ProposerRewardQuotient)
 			if err != nil {
 				return nil, errors.Wrapf(err, "could not slash validator index %d",
 					validatorIndex)

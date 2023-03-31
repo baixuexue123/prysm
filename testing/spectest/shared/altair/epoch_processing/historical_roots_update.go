@@ -4,10 +4,10 @@ import (
 	"path"
 	"testing"
 
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/epoch"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/state"
-	"github.com/prysmaticlabs/prysm/v3/testing/require"
-	"github.com/prysmaticlabs/prysm/v3/testing/spectest/utils"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/epoch"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/state"
+	"github.com/prysmaticlabs/prysm/v4/testing/require"
+	"github.com/prysmaticlabs/prysm/v4/testing/spectest/utils"
 )
 
 // RunHistoricalRootsUpdateTests executes "epoch_processing/historical_roots_update" tests.
@@ -27,7 +27,7 @@ func RunHistoricalRootsUpdateTests(t *testing.T, config string) {
 }
 
 func processHistoricalRootsUpdateWrapper(t *testing.T, st state.BeaconState) (state.BeaconState, error) {
-	st, err := epoch.ProcessHistoricalRootsUpdate(st)
+	st, err := epoch.ProcessHistoricalDataUpdate(st)
 	require.NoError(t, err, "Could not process final updates")
 	return st, nil
 }

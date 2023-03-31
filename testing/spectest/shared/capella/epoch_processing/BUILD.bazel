@@ -7,7 +7,7 @@ go_library(
         "effective_balance_updates.go",
         "eth1_data_reset.go",
         "helpers.go",
-        "historical_roots_update.go",
+        "historical_summaries_update.go",
         "inactivity_updates.go",
         "justification_and_finalization.go",
         "participation_flag_updates.go",
@@ -17,7 +17,7 @@ go_library(
         "slashings.go",
         "slashings_reset.go",
     ],
-    importpath = "github.com/prysmaticlabs/prysm/v3/testing/spectest/shared/capella/epoch_processing",
+    importpath = "github.com/prysmaticlabs/prysm/v4/testing/spectest/shared/capella/epoch_processing",
     visibility = ["//testing/spectest:__subpackages__"],
     deps = [
         "//beacon-chain/core/altair:go_default_library",

@@ -6,13 +6,13 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
-	fieldparams "github.com/prysmaticlabs/prysm/v3/config/fieldparams"
-	"github.com/prysmaticlabs/prysm/v3/crypto/bls"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
-	"github.com/prysmaticlabs/prysm/v3/testing/assert"
-	"github.com/prysmaticlabs/prysm/v3/testing/mock"
-	"github.com/prysmaticlabs/prysm/v3/testing/require"
-	"github.com/prysmaticlabs/prysm/v3/validator/client/testutil"
+	fieldparams "github.com/prysmaticlabs/prysm/v4/config/fieldparams"
+	"github.com/prysmaticlabs/prysm/v4/crypto/bls"
+	ethpb "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/testing/assert"
+	"github.com/prysmaticlabs/prysm/v4/testing/require"
+	validatormock "github.com/prysmaticlabs/prysm/v4/testing/validator-mock"
+	"github.com/prysmaticlabs/prysm/v4/validator/client/testutil"
 	logTest "github.com/sirupsen/logrus/hooks/test"
 )
 
@@ -25,19 +25,19 @@ func TestValidator_HandleKeyReload(t *testing.T) {
 
 		inactivePrivKey, err := bls.RandKey()
 		require.NoError(t, err)
-		inactivePubKey := [fieldparams.BLSPubkeyLength]byte{}
+		var inactivePubKey [fieldparams.BLSPubkeyLength]byte
 		copy(inactivePubKey[:], inactivePrivKey.PublicKey().Marshal())
 		activePrivKey, err := bls.RandKey()
 		require.NoError(t, err)
-		activePubKey := [fieldparams.BLSPubkeyLength]byte{}
+		var activePubKey [fieldparams.BLSPubkeyLength]byte
 		copy(activePubKey[:], activePrivKey.PublicKey().Marshal())
 		km := &mockKeymanager{
 			keysMap: map[[fieldparams.BLSPubkeyLength]byte]bls.SecretKey{
 				inactivePubKey: inactivePrivKey,
 			},
 		}
-		client := mock.NewMockValidatorClient(ctrl)
-		beaconClient := mock.NewMockBeaconChainClient(ctrl)
+		client := validatormock.NewMockValidatorClient(ctrl)
+		beaconClient := validatormock.NewMockBeaconChainClient(ctrl)
 		v := validator{
 			validatorClient: client,
 			keyManager:      km,
@@ -68,15 +68,15 @@ func TestValidator_HandleKeyReload(t *testing.T) {
 
 		inactivePrivKey, err := bls.RandKey()
 		require.NoError(t, err)
-		inactivePubKey := [fieldparams.BLSPubkeyLength]byte{}
+		var inactivePubKey [fieldparams.BLSPubkeyLength]byte
 		copy(inactivePubKey[:], inactivePrivKey.PublicKey().Marshal())
 		km := &mockKeymanager{
 			keysMap: map[[fieldparams.BLSPubkeyLength]byte]bls.SecretKey{
 				inactivePubKey: inactivePrivKey,
 			},
 		}
-		client := mock.NewMockValidatorClient(ctrl)
-		beaconClient := mock.NewMockBeaconChainClient(ctrl)
+		client := validatormock.NewMockValidatorClient(ctrl)
+		beaconClient := validatormock.NewMockBeaconChainClient(ctrl)
 		v := validator{
 			validatorClient: client,
 			keyManager:      km,
@@ -104,14 +104,14 @@ func TestValidator_HandleKeyReload(t *testing.T) {
 	t.Run("error when getting status", func(t *testing.T) {
 		inactivePrivKey, err := bls.RandKey()
 		require.NoError(t, err)
-		inactivePubKey := [fieldparams.BLSPubkeyLength]byte{}
+		var inactivePubKey [fieldparams.BLSPubkeyLength]byte
 		copy(inactivePubKey[:], inactivePrivKey.PublicKey().Marshal())
 		km := &mockKeymanager{
 			keysMap: map[[fieldparams.BLSPubkeyLength]byte]bls.SecretKey{
 				inactivePubKey: inactivePrivKey,
 			},
 		}
-		client := mock.NewMockValidatorClient(ctrl)
+		client := validatormock.NewMockValidatorClient(ctrl)
 		v := validator{
 			validatorClient: client,
 			keyManager:      km,

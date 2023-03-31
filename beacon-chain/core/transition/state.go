@@ -4,13 +4,14 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	b "github.com/prysmaticlabs/prysm/v3/beacon-chain/core/blocks"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/helpers"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/state"
-	state_native "github.com/prysmaticlabs/prysm/v3/beacon-chain/state/state-native"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/state/stateutil"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
+	b "github.com/prysmaticlabs/prysm/v4/beacon-chain/core/blocks"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/helpers"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/state"
+	state_native "github.com/prysmaticlabs/prysm/v4/beacon-chain/state/state-native"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/state/stateutil"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
+	"github.com/prysmaticlabs/prysm/v4/container/trie"
+	ethpb "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
 )
 
 // GenesisBeaconState gets called when MinGenesisActiveValidatorCount count of
@@ -72,6 +73,43 @@ func GenesisBeaconState(ctx context.Context, deposits []*ethpb.Deposit, genesisT
 		return nil, errors.Wrap(err, "could not process validator deposits")
 	}
 
+	return OptimizedGenesisBeaconState(genesisTime, st, st.Eth1Data())
+}
+
+// PreminedGenesisBeaconState works almost exactly like GenesisBeaconState, except that it assumes that genesis deposits
+// are not represented in the deposit contract and are only found in the genesis state validator registry. In order
+// to ensure the deposit root and count match the empty deposit contract deployed in a testnet genesis block, the root
+// of an empty deposit trie is computed and used as Eth1Data.deposit_root, and the deposit count is set to 0.
+func PreminedGenesisBeaconState(ctx context.Context, deposits []*ethpb.Deposit, genesisTime uint64, eth1Data *ethpb.Eth1Data) (state.BeaconState, error) {
+	st, err := EmptyGenesisState()
+	if err != nil {
+		return nil, err
+	}
+
+	// Process initial deposits.
+	st, err = helpers.UpdateGenesisEth1Data(st, deposits, eth1Data)
+	if err != nil {
+		return nil, err
+	}
+	st, err = b.ProcessPreGenesisDeposits(ctx, st, deposits)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not process validator deposits")
+	}
+
+	t, err := trie.NewTrie(params.BeaconConfig().DepositContractTreeDepth)
+	if err != nil {
+		return nil, err
+	}
+	dr, err := t.HashTreeRoot()
+	if err != nil {
+		return nil, err
+	}
+	if err := st.SetEth1Data(&ethpb.Eth1Data{DepositRoot: dr[:], BlockHash: eth1Data.BlockHash}); err != nil {
+		return nil, err
+	}
+	if err := st.SetEth1DepositIndex(0); err != nil {
+		return nil, err
+	}
 	return OptimizedGenesisBeaconState(genesisTime, st, st.Eth1Data())
 }
 

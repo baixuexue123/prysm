@@ -4,18 +4,18 @@ import (
 	"context"
 	"testing"
 
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/blocks"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/signing"
-	v "github.com/prysmaticlabs/prysm/v3/beacon-chain/core/validators"
-	state_native "github.com/prysmaticlabs/prysm/v3/beacon-chain/state/state-native"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
-	types "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	"github.com/prysmaticlabs/prysm/v3/crypto/bls"
-	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
-	"github.com/prysmaticlabs/prysm/v3/testing/assert"
-	"github.com/prysmaticlabs/prysm/v3/testing/require"
-	"github.com/prysmaticlabs/prysm/v3/testing/util"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/blocks"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/signing"
+	v "github.com/prysmaticlabs/prysm/v4/beacon-chain/core/validators"
+	state_native "github.com/prysmaticlabs/prysm/v4/beacon-chain/state/state-native"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	"github.com/prysmaticlabs/prysm/v4/crypto/bls"
+	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
+	ethpb "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/testing/assert"
+	"github.com/prysmaticlabs/prysm/v4/testing/require"
+	"github.com/prysmaticlabs/prysm/v4/testing/util"
 )
 
 func TestSlashableAttestationData_CanSlash(t *testing.T) {
@@ -44,7 +44,7 @@ func TestProcessAttesterSlashings_DataNotSlashable(t *testing.T) {
 		})}}
 
 	var registry []*ethpb.Validator
-	currentSlot := types.Slot(0)
+	currentSlot := primitives.Slot(0)
 
 	beaconState, err := state_native.InitializeFromProtoPhase0(&ethpb.BeaconState{
 		Validators: registry,
@@ -63,7 +63,7 @@ func TestProcessAttesterSlashings_DataNotSlashable(t *testing.T) {
 
 func TestProcessAttesterSlashings_IndexedAttestationFailedToVerify(t *testing.T) {
 	var registry []*ethpb.Validator
-	currentSlot := types.Slot(0)
+	currentSlot := primitives.Slot(0)
 
 	beaconState, err := state_native.InitializeFromProtoPhase0(&ethpb.BeaconState{
 		Validators: registry,
@@ -99,7 +99,7 @@ func TestProcessAttesterSlashings_IndexedAttestationFailedToVerify(t *testing.T)
 func TestProcessAttesterSlashings_AppliesCorrectStatus(t *testing.T) {
 	beaconState, privKeys := util.DeterministicGenesisState(t, 100)
 	for _, vv := range beaconState.Validators() {
-		vv.WithdrawableEpoch = types.Epoch(params.BeaconConfig().SlotsPerEpoch)
+		vv.WithdrawableEpoch = primitives.Epoch(params.BeaconConfig().SlotsPerEpoch)
 	}
 
 	att1 := util.HydrateIndexedAttestation(&ethpb.IndexedAttestation{
@@ -168,7 +168,7 @@ func TestProcessAttesterSlashings_AppliesCorrectStatus(t *testing.T) {
 func TestProcessAttesterSlashings_AppliesCorrectStatusAltair(t *testing.T) {
 	beaconState, privKeys := util.DeterministicGenesisStateAltair(t, 100)
 	for _, vv := range beaconState.Validators() {
-		vv.WithdrawableEpoch = types.Epoch(params.BeaconConfig().SlotsPerEpoch)
+		vv.WithdrawableEpoch = primitives.Epoch(params.BeaconConfig().SlotsPerEpoch)
 	}
 
 	att1 := util.HydrateIndexedAttestation(&ethpb.IndexedAttestation{
@@ -237,7 +237,7 @@ func TestProcessAttesterSlashings_AppliesCorrectStatusAltair(t *testing.T) {
 func TestProcessAttesterSlashings_AppliesCorrectStatusBellatrix(t *testing.T) {
 	beaconState, privKeys := util.DeterministicGenesisStateBellatrix(t, 100)
 	for _, vv := range beaconState.Validators() {
-		vv.WithdrawableEpoch = types.Epoch(params.BeaconConfig().SlotsPerEpoch)
+		vv.WithdrawableEpoch = primitives.Epoch(params.BeaconConfig().SlotsPerEpoch)
 	}
 
 	att1 := util.HydrateIndexedAttestation(&ethpb.IndexedAttestation{
@@ -306,7 +306,7 @@ func TestProcessAttesterSlashings_AppliesCorrectStatusBellatrix(t *testing.T) {
 func TestProcessAttesterSlashings_AppliesCorrectStatusCapella(t *testing.T) {
 	beaconState, privKeys := util.DeterministicGenesisStateCapella(t, 100)
 	for _, vv := range beaconState.Validators() {
-		vv.WithdrawableEpoch = types.Epoch(params.BeaconConfig().SlotsPerEpoch)
+		vv.WithdrawableEpoch = primitives.Epoch(params.BeaconConfig().SlotsPerEpoch)
 	}
 
 	att1 := util.HydrateIndexedAttestation(&ethpb.IndexedAttestation{

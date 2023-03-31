@@ -6,8 +6,8 @@ package state
 import (
 	"time"
 
-	"github.com/prysmaticlabs/prysm/v3/consensus-types/interfaces"
-	types "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/interfaces"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
 )
 
 const (
@@ -26,16 +26,18 @@ const (
 	FinalizedCheckpoint
 	// NewHead of the chain event.
 	NewHead
+	// MissedSlot is sent when we need to notify users that a slot was missed.
+	MissedSlot
 )
 
 // BlockProcessedData is the data sent with BlockProcessed events.
 type BlockProcessedData struct {
 	// Slot is the slot of the processed block.
-	Slot types.Slot
+	Slot primitives.Slot
 	// BlockRoot of the processed block.
 	BlockRoot [32]byte
 	// SignedBlock is the physical processed block.
-	SignedBlock interfaces.SignedBeaconBlock
+	SignedBlock interfaces.ReadOnlySignedBeaconBlock
 	// Verified is true if the block's BLS contents have been verified.
 	Verified bool
 }

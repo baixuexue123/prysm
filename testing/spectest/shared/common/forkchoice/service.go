@@ -2,33 +2,34 @@ package forkchoice
 
 import (
 	"context"
-	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/blockchain"
-	mock "github.com/prysmaticlabs/prysm/v3/beacon-chain/blockchain/testing"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/cache"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/cache/depositcache"
-	coreTime "github.com/prysmaticlabs/prysm/v3/beacon-chain/core/time"
-	testDB "github.com/prysmaticlabs/prysm/v3/beacon-chain/db/testing"
-	doublylinkedtree "github.com/prysmaticlabs/prysm/v3/beacon-chain/forkchoice/doubly-linked-tree"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/operations/attestations"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/state"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/state/stategen"
-	"github.com/prysmaticlabs/prysm/v3/consensus-types/interfaces"
-	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
-	"github.com/prysmaticlabs/prysm/v3/proto/builder"
-	pb "github.com/prysmaticlabs/prysm/v3/proto/engine/v1"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
-	"github.com/prysmaticlabs/prysm/v3/testing/require"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/blockchain"
+	mock "github.com/prysmaticlabs/prysm/v4/beacon-chain/blockchain/testing"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/cache"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/cache/depositcache"
+	coreTime "github.com/prysmaticlabs/prysm/v4/beacon-chain/core/time"
+	testDB "github.com/prysmaticlabs/prysm/v4/beacon-chain/db/testing"
+	doublylinkedtree "github.com/prysmaticlabs/prysm/v4/beacon-chain/forkchoice/doubly-linked-tree"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/operations/attestations"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/state"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/state/stategen"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/interfaces"
+	payloadattribute "github.com/prysmaticlabs/prysm/v4/consensus-types/payload-attribute"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
+	"github.com/prysmaticlabs/prysm/v4/proto/builder"
+	pb "github.com/prysmaticlabs/prysm/v4/proto/engine/v1"
+	ethpb "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/testing/require"
 )
 
 func startChainService(t testing.TB,
 	st state.BeaconState,
-	block interfaces.SignedBeaconBlock,
+	block interfaces.ReadOnlySignedBeaconBlock,
 	engineMock *engineMock,
 ) *blockchain.Service {
 	db := testDB.SetupDB(t)
@@ -78,23 +79,18 @@ type engineMock struct {
 	payloadStatus   error
 }
 
-func (m *engineMock) GetPayload(context.Context, [8]byte) (*pb.ExecutionPayload, error) {
+func (m *engineMock) GetPayload(context.Context, [8]byte, primitives.Slot) (interfaces.ExecutionData, error) {
 	return nil, nil
 }
-func (m *engineMock) GetPayloadV2(context.Context, [8]byte) (*pb.ExecutionPayloadCapella, error) {
-	return nil, nil
-}
-func (m *engineMock) ForkchoiceUpdated(context.Context, *pb.ForkchoiceState, *pb.PayloadAttributes) (*pb.PayloadIDBytes, []byte, error) {
-	return nil, m.latestValidHash, m.payloadStatus
-}
-func (m *engineMock) ForkchoiceUpdatedV2(context.Context, *pb.ForkchoiceState, *pb.PayloadAttributesV2) (*pb.PayloadIDBytes, []byte, error) {
+
+func (m *engineMock) ForkchoiceUpdated(context.Context, *pb.ForkchoiceState, payloadattribute.Attributer) (*pb.PayloadIDBytes, []byte, error) {
 	return nil, m.latestValidHash, m.payloadStatus
 }
 func (m *engineMock) NewPayload(context.Context, interfaces.ExecutionData) ([]byte, error) {
 	return m.latestValidHash, m.payloadStatus
 }
 
-func (m *engineMock) LatestExecutionBlock(context.Context) (*pb.ExecutionBlock, error) {
+func (m *engineMock) LatestExecutionBlock() (*pb.ExecutionBlock, error) {
 	return nil, nil
 }
 
@@ -108,7 +104,7 @@ func (m *engineMock) ExecutionBlockByHash(_ context.Context, hash common.Hash, _
 		return nil, nil
 	}
 
-	td := new(big.Int).SetBytes(bytesutil.ReverseByteOrder(b.TotalDifficulty))
+	td := bytesutil.LittleEndianBytesToBigInt(b.TotalDifficulty)
 	tdHex := hexutil.EncodeBig(td)
 	return &pb.ExecutionBlock{
 		Header: gethtypes.Header{
@@ -124,5 +120,9 @@ func (m *engineMock) GetTerminalBlockHash(context.Context, uint64) ([]byte, bool
 }
 
 func (m *engineMock) PayloadAttributes(ctx context.Context, attrs *builder.BuilderPayloadAttributes) ([]byte, error) {
+	return nil, nil
+}
+
+func (m *engineMock) PayloadAttributesV2(ctx context.Context, attrs *builder.BuilderPayloadAttributesV2) ([]byte, error) {
 	return nil, nil
 }

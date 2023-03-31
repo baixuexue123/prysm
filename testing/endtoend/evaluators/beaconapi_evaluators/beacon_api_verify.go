@@ -1,15 +1,15 @@
 package beaconapi_evaluators
 
 import (
-	"github.com/prysmaticlabs/prysm/v3/testing/endtoend/policies"
-	e2etypes "github.com/prysmaticlabs/prysm/v3/testing/endtoend/types"
+	"github.com/prysmaticlabs/prysm/v4/testing/endtoend/policies"
+	e2etypes "github.com/prysmaticlabs/prysm/v4/testing/endtoend/types"
 	"google.golang.org/grpc"
 )
 
 // BeaconAPIMultiClientVerifyIntegrity tests our API Middleware responses to other beacon nodes such as lighthouse.
 var BeaconAPIMultiClientVerifyIntegrity = e2etypes.Evaluator{
 	Name:       "beacon_api_multi-client_verify_integrity_epoch_%d",
-	Policy:     policies.AllEpochs,
+	Policy:     policies.AfterNthEpoch(0),
 	Evaluation: beaconAPIVerify,
 }
 
@@ -20,7 +20,7 @@ const (
 
 type apiComparisonFunc func(beaconNodeIdx int, conn *grpc.ClientConn) error
 
-func beaconAPIVerify(_ e2etypes.EvaluationContext, conns ...*grpc.ClientConn) error {
+func beaconAPIVerify(_ *e2etypes.EvaluationContext, conns ...*grpc.ClientConn) error {
 	beacon := []apiComparisonFunc{
 		withCompareBeaconAPIs,
 	}

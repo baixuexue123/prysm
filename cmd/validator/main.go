@@ -11,23 +11,23 @@ import (
 	runtimeDebug "runtime/debug"
 
 	joonix "github.com/joonix/log"
-	"github.com/prysmaticlabs/prysm/v3/cmd"
-	accountcommands "github.com/prysmaticlabs/prysm/v3/cmd/validator/accounts"
-	dbcommands "github.com/prysmaticlabs/prysm/v3/cmd/validator/db"
-	"github.com/prysmaticlabs/prysm/v3/cmd/validator/flags"
-	slashingprotectioncommands "github.com/prysmaticlabs/prysm/v3/cmd/validator/slashing-protection"
-	walletcommands "github.com/prysmaticlabs/prysm/v3/cmd/validator/wallet"
-	"github.com/prysmaticlabs/prysm/v3/cmd/validator/web"
-	"github.com/prysmaticlabs/prysm/v3/config/features"
-	"github.com/prysmaticlabs/prysm/v3/io/file"
-	"github.com/prysmaticlabs/prysm/v3/io/logs"
-	"github.com/prysmaticlabs/prysm/v3/monitoring/journald"
-	"github.com/prysmaticlabs/prysm/v3/runtime/debug"
-	prefixed "github.com/prysmaticlabs/prysm/v3/runtime/logging/logrus-prefixed-formatter"
-	_ "github.com/prysmaticlabs/prysm/v3/runtime/maxprocs"
-	"github.com/prysmaticlabs/prysm/v3/runtime/tos"
-	"github.com/prysmaticlabs/prysm/v3/runtime/version"
-	"github.com/prysmaticlabs/prysm/v3/validator/node"
+	"github.com/prysmaticlabs/prysm/v4/cmd"
+	accountcommands "github.com/prysmaticlabs/prysm/v4/cmd/validator/accounts"
+	dbcommands "github.com/prysmaticlabs/prysm/v4/cmd/validator/db"
+	"github.com/prysmaticlabs/prysm/v4/cmd/validator/flags"
+	slashingprotectioncommands "github.com/prysmaticlabs/prysm/v4/cmd/validator/slashing-protection"
+	walletcommands "github.com/prysmaticlabs/prysm/v4/cmd/validator/wallet"
+	"github.com/prysmaticlabs/prysm/v4/cmd/validator/web"
+	"github.com/prysmaticlabs/prysm/v4/config/features"
+	"github.com/prysmaticlabs/prysm/v4/io/file"
+	"github.com/prysmaticlabs/prysm/v4/io/logs"
+	"github.com/prysmaticlabs/prysm/v4/monitoring/journald"
+	"github.com/prysmaticlabs/prysm/v4/runtime/debug"
+	prefixed "github.com/prysmaticlabs/prysm/v4/runtime/logging/logrus-prefixed-formatter"
+	_ "github.com/prysmaticlabs/prysm/v4/runtime/maxprocs"
+	"github.com/prysmaticlabs/prysm/v4/runtime/tos"
+	"github.com/prysmaticlabs/prysm/v4/runtime/version"
+	"github.com/prysmaticlabs/prysm/v4/validator/node"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -49,6 +49,7 @@ func startNode(ctx *cli.Context) error {
 var appFlags = []cli.Flag{
 	flags.BeaconRPCProviderFlag,
 	flags.BeaconRPCGatewayProviderFlag,
+	flags.BeaconRESTApiProviderFlag,
 	flags.CertFlag,
 	flags.GraffitiFlag,
 	flags.DisablePenaltyRewardLogFlag,
@@ -112,11 +113,6 @@ var appFlags = []cli.Flag{
 }
 
 func init() {
-	// Append the Beacon REST API flags
-	if flags.BuiltWithBeaconApi {
-		appFlags = append(appFlags, flags.BeaconRESTApiProviderFlag)
-	}
-
 	appFlags = cmd.WrapFlags(append(appFlags, features.ValidatorFlags...))
 }
 
@@ -125,7 +121,12 @@ func main() {
 	app.Name = "validator"
 	app.Usage = `launches an Ethereum validator client that interacts with a beacon chain, starts proposer and attester services, p2p connections, and more`
 	app.Version = version.Version()
-	app.Action = startNode
+	app.Action = func(ctx *cli.Context) error {
+		if err := startNode(ctx); err != nil {
+			return cli.Exit(err.Error(), 1)
+		}
+		return nil
+	}
 	app.Commands = []*cli.Command{
 		walletcommands.Commands,
 		accountcommands.Commands,

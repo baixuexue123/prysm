@@ -9,28 +9,28 @@ import (
 	"github.com/ethereum/go-ethereum/p2p/enr"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	mock "github.com/prysmaticlabs/prysm/v3/beacon-chain/blockchain/testing"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/transition"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/db/kv"
-	testingDB "github.com/prysmaticlabs/prysm/v3/beacon-chain/db/testing"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/p2p"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/p2p/peers"
-	p2ptest "github.com/prysmaticlabs/prysm/v3/beacon-chain/p2p/testing"
-	p2ptypes "github.com/prysmaticlabs/prysm/v3/beacon-chain/p2p/types"
-	state_native "github.com/prysmaticlabs/prysm/v3/beacon-chain/state/state-native"
-	mockSync "github.com/prysmaticlabs/prysm/v3/beacon-chain/sync/initial-sync/testing"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
-	consensusblocks "github.com/prysmaticlabs/prysm/v3/consensus-types/blocks"
-	"github.com/prysmaticlabs/prysm/v3/consensus-types/interfaces"
-	types "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	"github.com/prysmaticlabs/prysm/v3/consensus-types/wrapper"
-	leakybucket "github.com/prysmaticlabs/prysm/v3/container/leaky-bucket"
-	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
-	"github.com/prysmaticlabs/prysm/v3/testing/assert"
-	"github.com/prysmaticlabs/prysm/v3/testing/require"
-	"github.com/prysmaticlabs/prysm/v3/testing/util"
-	prysmTime "github.com/prysmaticlabs/prysm/v3/time"
+	mock "github.com/prysmaticlabs/prysm/v4/beacon-chain/blockchain/testing"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/transition"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/db/kv"
+	testingDB "github.com/prysmaticlabs/prysm/v4/beacon-chain/db/testing"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/p2p"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/p2p/peers"
+	p2ptest "github.com/prysmaticlabs/prysm/v4/beacon-chain/p2p/testing"
+	p2ptypes "github.com/prysmaticlabs/prysm/v4/beacon-chain/p2p/types"
+	state_native "github.com/prysmaticlabs/prysm/v4/beacon-chain/state/state-native"
+	mockSync "github.com/prysmaticlabs/prysm/v4/beacon-chain/sync/initial-sync/testing"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
+	consensusblocks "github.com/prysmaticlabs/prysm/v4/consensus-types/blocks"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/interfaces"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/wrapper"
+	leakybucket "github.com/prysmaticlabs/prysm/v4/container/leaky-bucket"
+	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
+	ethpb "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/testing/assert"
+	"github.com/prysmaticlabs/prysm/v4/testing/require"
+	"github.com/prysmaticlabs/prysm/v4/testing/util"
+	prysmTime "github.com/prysmaticlabs/prysm/v4/time"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -82,7 +82,7 @@ func TestStatusRPCHandler_Disconnects_OnForkVersionMismatch(t *testing.T) {
 	wg2.Add(1)
 	p2.BHost.SetStreamHandler(pcl2, func(stream network.Stream) {
 		defer wg2.Done()
-		msg := new(types.SSZUint64)
+		msg := new(primitives.SSZUint64)
 		assert.NoError(t, r.cfg.p2p.Encoding().DecodeWithMaxLength(stream, msg))
 		assert.Equal(t, p2ptypes.GoodbyeCodeWrongNetwork, *msg)
 		assert.NoError(t, stream.Close())
@@ -107,7 +107,7 @@ func TestStatusRPCHandler_ConnectsOnGenesis(t *testing.T) {
 	p2 := p2ptest.NewTestP2P(t)
 	p1.Connect(p2)
 	assert.Equal(t, 1, len(p1.BHost.Network().Peers()), "Expected peers to be connected")
-	root := [32]byte{}
+	var root [32]byte
 
 	r := &Service{
 		cfg: &config{
@@ -344,7 +344,7 @@ func TestHandshakeHandlers_Roundtrip(t *testing.T) {
 	wg2.Add(1)
 	p2.BHost.SetStreamHandler(pcl, func(stream network.Stream) {
 		defer wg2.Done()
-		out := new(types.SSZUint64)
+		out := new(primitives.SSZUint64)
 		assert.NoError(t, r.cfg.p2p.Encoding().DecodeWithMaxLength(stream, out))
 		assert.Equal(t, uint64(2), uint64(*out))
 		assert.NoError(t, r2.pingHandler(context.Background(), out, stream))
@@ -591,19 +591,19 @@ func TestStatusRPCRequest_FinalizedBlockSkippedSlots(t *testing.T) {
 	}
 	require.NoError(t, db.SaveStateSummaries(context.Background(), stateSummaries))
 
-	rootFetcher := func(slot types.Slot) [32]byte {
+	rootFetcher := func(slot primitives.Slot) [32]byte {
 		rt, err := blocksTillHead[slot-1].Block().HashTreeRoot()
 		require.NoError(t, err)
 		return rt
 	}
 	tests := []struct {
 		name                   string
-		expectedFinalizedEpoch types.Epoch
+		expectedFinalizedEpoch primitives.Epoch
 		expectedFinalizedRoot  [32]byte
-		headSlot               types.Slot
-		remoteFinalizedEpoch   types.Epoch
+		headSlot               primitives.Slot
+		remoteFinalizedEpoch   primitives.Epoch
 		remoteFinalizedRoot    [32]byte
-		remoteHeadSlot         types.Slot
+		remoteHeadSlot         primitives.Slot
 		expectError            bool
 	}{
 		{
@@ -884,7 +884,7 @@ func TestShouldResync(t *testing.T) {
 	type args struct {
 		genesis  time.Time
 		syncing  bool
-		headSlot types.Slot
+		headSlot primitives.Slot
 	}
 	tests := []struct {
 		name string
@@ -950,14 +950,14 @@ func TestShouldResync(t *testing.T) {
 	}
 }
 
-func makeBlocks(t *testing.T, i, n uint64, previousRoot [32]byte) []interfaces.SignedBeaconBlock {
+func makeBlocks(t *testing.T, i, n uint64, previousRoot [32]byte) []interfaces.ReadOnlySignedBeaconBlock {
 	blocks := make([]*ethpb.SignedBeaconBlock, n)
-	ifaceBlocks := make([]interfaces.SignedBeaconBlock, n)
+	ifaceBlocks := make([]interfaces.ReadOnlySignedBeaconBlock, n)
 	for j := i; j < n+i; j++ {
 		parentRoot := make([]byte, 32)
 		copy(parentRoot, previousRoot[:])
 		blocks[j-i] = util.NewBeaconBlock()
-		blocks[j-i].Block.Slot = types.Slot(j + 1)
+		blocks[j-i].Block.Slot = primitives.Slot(j + 1)
 		blocks[j-i].Block.ParentRoot = parentRoot
 		var err error
 		previousRoot, err = blocks[j-i].Block.HashTreeRoot()

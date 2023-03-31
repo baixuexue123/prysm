@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,9 +12,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/prysmaticlabs/prysm/v3/api/gateway/apimiddleware"
-	"github.com/prysmaticlabs/prysm/v3/api/grpc"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/rpc/eth/events"
+	"github.com/prysmaticlabs/prysm/v4/api/gateway/apimiddleware"
+	"github.com/prysmaticlabs/prysm/v4/api/grpc"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/rpc/eth/events"
+	"github.com/prysmaticlabs/prysm/v4/runtime/version"
 	"github.com/r3labs/sse"
 )
 
@@ -57,6 +59,19 @@ func handleGetBeaconStateSSZV2(m *apimiddleware.ApiProxyMiddleware, endpoint api
 }
 
 func handleGetBeaconBlockSSZV2(m *apimiddleware.ApiProxyMiddleware, endpoint apimiddleware.Endpoint, w http.ResponseWriter, req *http.Request) (handled bool) {
+	config := sszConfig{
+		fileName:     "beacon_block.ssz",
+		responseJson: &VersionedSSZResponseJson{},
+	}
+	return handleGetSSZ(m, endpoint, w, req, config)
+}
+
+func handleGetBlindedBeaconBlockSSZ(
+	m *apimiddleware.ApiProxyMiddleware,
+	endpoint apimiddleware.Endpoint,
+	w http.ResponseWriter,
+	req *http.Request,
+) (handled bool) {
 	config := sszConfig{
 		fileName:     "beacon_block.ssz",
 		responseJson: &VersionedSSZResponseJson{},
@@ -351,6 +366,10 @@ func handleEvents(m *apimiddleware.ApiProxyMiddleware, _ apimiddleware.Endpoint,
 	return true
 }
 
+type dataSubset struct {
+	Version string `json:"version"`
+}
+
 func receiveEvents(eventChan <-chan *sse.Event, w http.ResponseWriter, req *http.Request) apimiddleware.ErrorJson {
 	for {
 		select {
@@ -403,6 +422,21 @@ func receiveEvents(eventChan <-chan *sse.Event, w http.ResponseWriter, req *http
 				data = &EventChainReorgJson{}
 			case events.SyncCommitteeContributionTopic:
 				data = &SignedContributionAndProofJson{}
+			case events.BLSToExecutionChangeTopic:
+				data = &SignedBLSToExecutionChangeJson{}
+			case events.PayloadAttributesTopic:
+				dataSubset := &dataSubset{}
+				if err := json.Unmarshal(msg.Data, dataSubset); err != nil {
+					return apimiddleware.InternalServerError(err)
+				}
+				switch dataSubset.Version {
+				case version.String(version.Capella):
+					data = &EventPayloadAttributeStreamV2Json{}
+				case version.String(version.Bellatrix):
+					data = &EventPayloadAttributeStreamV1Json{}
+				default:
+					return apimiddleware.InternalServerError(errors.New("payload version unsupported"))
+				}
 			case "error":
 				data = &EventErrorJson{}
 			default:

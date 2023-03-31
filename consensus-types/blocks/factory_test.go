@@ -5,13 +5,13 @@ import (
 	"errors"
 	"testing"
 
-	fieldparams "github.com/prysmaticlabs/prysm/v3/config/fieldparams"
-	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
-	enginev1 "github.com/prysmaticlabs/prysm/v3/proto/engine/v1"
-	eth "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
-	"github.com/prysmaticlabs/prysm/v3/runtime/version"
-	"github.com/prysmaticlabs/prysm/v3/testing/assert"
-	"github.com/prysmaticlabs/prysm/v3/testing/require"
+	fieldparams "github.com/prysmaticlabs/prysm/v4/config/fieldparams"
+	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
+	enginev1 "github.com/prysmaticlabs/prysm/v4/proto/engine/v1"
+	eth "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/runtime/version"
+	"github.com/prysmaticlabs/prysm/v4/testing/assert"
+	"github.com/prysmaticlabs/prysm/v4/testing/require"
 )
 
 func Test_NewSignedBeaconBlock(t *testing.T) {
@@ -332,14 +332,14 @@ func TestBuildSignedBeaconBlockFromExecutionPayload(t *testing.T) {
 		_, err := BuildSignedBeaconBlockFromExecutionPayload(nil, nil)
 		require.ErrorIs(t, ErrNilSignedBeaconBlock, err)
 	})
-	t.Run("unsupported field payload header", func(t *testing.T) {
+	t.Run("not blinded payload", func(t *testing.T) {
 		altairBlock := &eth.SignedBeaconBlockAltair{
 			Block: &eth.BeaconBlockAltair{
 				Body: &eth.BeaconBlockBodyAltair{}}}
 		blk, err := NewSignedBeaconBlock(altairBlock)
 		require.NoError(t, err)
 		_, err = BuildSignedBeaconBlockFromExecutionPayload(blk, nil)
-		require.Equal(t, true, errors.Is(err, ErrUnsupportedGetter))
+		require.Equal(t, true, errors.Is(err, errNonBlindedSignedBeaconBlock))
 	})
 	t.Run("payload header root and payload root mismatch", func(t *testing.T) {
 		blockHash := bytesutil.Bytes32(1)

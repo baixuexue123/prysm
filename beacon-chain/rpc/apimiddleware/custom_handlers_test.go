@@ -11,17 +11,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prysmaticlabs/prysm/v3/api/gateway/apimiddleware"
-	"github.com/prysmaticlabs/prysm/v3/api/grpc"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/rpc/eth/events"
-	"github.com/prysmaticlabs/prysm/v3/testing/assert"
-	"github.com/prysmaticlabs/prysm/v3/testing/require"
+	"github.com/prysmaticlabs/prysm/v4/api/gateway/apimiddleware"
+	"github.com/prysmaticlabs/prysm/v4/api/grpc"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/rpc/eth/events"
+	"github.com/prysmaticlabs/prysm/v4/testing/assert"
+	"github.com/prysmaticlabs/prysm/v4/testing/require"
 	"github.com/r3labs/sse"
 )
 
 type testSSZResponseJson struct {
 	Version             string `json:"version"`
 	ExecutionOptimistic bool   `json:"execution_optimistic"`
+	Finalized           bool   `json:"finalized"`
 	Data                string `json:"data"`
 }
 
@@ -35,6 +36,10 @@ func (t testSSZResponseJson) SSZOptimistic() bool {
 
 func (t testSSZResponseJson) SSZData() string {
 	return t.Data
+}
+
+func (t testSSZResponseJson) SSZFinalized() bool {
+	return t.Finalized
 }
 
 func TestSSZRequested(t *testing.T) {

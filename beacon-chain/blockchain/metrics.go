@@ -6,15 +6,15 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/altair"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/epoch/precompute"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/state"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
-	"github.com/prysmaticlabs/prysm/v3/consensus-types/interfaces"
-	types "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
-	"github.com/prysmaticlabs/prysm/v3/runtime/version"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/altair"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/epoch/precompute"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/state"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/interfaces"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
+	ethpb "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/runtime/version"
 )
 
 var (
@@ -111,6 +111,18 @@ var (
 		Name: "beacon_reorgs_total",
 		Help: "Count the number of times beacon chain has a reorg",
 	})
+	LateBlockAttemptedReorgCount = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "beacon_late_block_attempted_reorgs",
+		Help: "Count the number of times a proposer served by this beacon has attempted a late block reorg",
+	})
+	lateBlockFailedAttemptFirstThreshold = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "beacon_failed_reorg_attempts_first_threshold",
+		Help: "Count the number of times a proposer served by this beacon attempted a late block reorg but desisted in the first threshold",
+	})
+	lateBlockFailedAttemptSecondThreshold = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "beacon_failed_reorg_attempts_second_threshold",
+		Help: "Count the number of times a proposer served by this beacon attempted a late block reorg but desisted in the second threshold",
+	})
 	saveOrphanedAttCount = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "saved_orphaned_att_total",
 		Help: "Count the number of times an orphaned attestation is saved",
@@ -129,14 +141,6 @@ var (
 	syncHeadStateHit = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "sync_head_state_hit",
 		Help: "The number of sync head state requests that are present in the cache.",
-	})
-	stateBalanceCacheHit = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "state_balance_cache_hit",
-		Help: "Count the number of state balance cache hits.",
-	})
-	stateBalanceCacheMiss = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "state_balance_cache_miss",
-		Help: "Count the number of state balance cache hits.",
 	})
 	newPayloadValidNodeCount = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "new_payload_valid_node_count",
@@ -165,10 +169,6 @@ var (
 	txsPerSlotCount = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "txs_per_slot_count",
 		Help: "Count the number of txs per slot",
-	})
-	missedPayloadIDFilledCount = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "missed_payload_id_filled_count",
-		Help: "",
 	})
 	onBlockProcessingTime = promauto.NewSummary(prometheus.SummaryOpts{
 		Name: "on_block_processing_milliseconds",
@@ -216,7 +216,7 @@ var (
 )
 
 // reportSlotMetrics reports slot related metrics.
-func reportSlotMetrics(stateSlot, headSlot, clockSlot types.Slot, finalizedCheckpoint *ethpb.Checkpoint) {
+func reportSlotMetrics(stateSlot, headSlot, clockSlot primitives.Slot, finalizedCheckpoint *ethpb.Checkpoint) {
 	clockTimeSlot.Set(float64(clockSlot))
 	beaconSlot.Set(float64(stateSlot))
 	beaconHeadSlot.Set(float64(headSlot))
@@ -228,7 +228,7 @@ func reportSlotMetrics(stateSlot, headSlot, clockSlot types.Slot, finalizedCheck
 
 // reportEpochMetrics reports epoch related metrics.
 func reportEpochMetrics(ctx context.Context, postState, headState state.BeaconState) error {
-	currentEpoch := types.Epoch(postState.Slot() / params.BeaconConfig().SlotsPerEpoch)
+	currentEpoch := primitives.Epoch(postState.Slot() / params.BeaconConfig().SlotsPerEpoch)
 
 	// Validator instances
 	pendingInstances := 0
@@ -247,7 +247,7 @@ func reportEpochMetrics(ctx context.Context, postState, headState state.BeaconSt
 	slashingEffectiveBalance := uint64(0)
 
 	for i, validator := range postState.Validators() {
-		bal, err := postState.BalanceAtIndex(types.ValidatorIndex(i))
+		bal, err := postState.BalanceAtIndex(primitives.ValidatorIndex(i))
 		if err != nil {
 			log.WithError(err).Error("Could not load validator balance")
 			continue
@@ -317,9 +317,8 @@ func reportEpochMetrics(ctx context.Context, postState, headState state.BeaconSt
 	var b *precompute.Balance
 	var v []*precompute.Validator
 	var err error
-	switch headState.Version() {
-	case version.Phase0:
-		// Validator participation should be viewed on the canonical chain.
+
+	if headState.Version() == version.Phase0 {
 		v, b, err = precompute.New(ctx, headState)
 		if err != nil {
 			return err
@@ -328,7 +327,7 @@ func reportEpochMetrics(ctx context.Context, postState, headState state.BeaconSt
 		if err != nil {
 			return err
 		}
-	case version.Altair, version.Bellatrix, version.Capella:
+	} else if headState.Version() >= version.Altair {
 		v, b, err = altair.InitializePrecomputeValidators(ctx, headState)
 		if err != nil {
 			return err
@@ -337,9 +336,10 @@ func reportEpochMetrics(ctx context.Context, postState, headState state.BeaconSt
 		if err != nil {
 			return err
 		}
-	default:
+	} else {
 		return errors.Errorf("invalid state type provided: %T", headState.ToProtoUnsafe())
 	}
+
 	prevEpochActiveBalances.Set(float64(b.ActivePrevEpoch))
 	prevEpochSourceBalances.Set(float64(b.PrevEpochAttested))
 	prevEpochTargetBalances.Set(float64(b.PrevEpochTargetAttested))
@@ -353,7 +353,7 @@ func reportEpochMetrics(ctx context.Context, postState, headState state.BeaconSt
 	return nil
 }
 
-func reportAttestationInclusion(blk interfaces.BeaconBlock) {
+func reportAttestationInclusion(blk interfaces.ReadOnlyBeaconBlock) {
 	for _, att := range blk.Body().Attestations() {
 		attestationInclusionDelay.Observe(float64(blk.Slot() - att.Data.Slot))
 	}

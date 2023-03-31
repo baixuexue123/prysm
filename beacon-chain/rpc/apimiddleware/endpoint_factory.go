@@ -2,7 +2,7 @@ package apimiddleware
 
 import (
 	"github.com/pkg/errors"
-	"github.com/prysmaticlabs/prysm/v3/api/gateway/apimiddleware"
+	"github.com/prysmaticlabs/prysm/v4/api/gateway/apimiddleware"
 )
 
 // BeaconEndpointFactory creates endpoints used for running beacon chain API calls through the API Middleware.
@@ -26,6 +26,7 @@ func (_ *BeaconEndpointFactory) Paths() []string {
 		"/eth/v1/beacon/states/{state_id}/committees",
 		"/eth/v1/beacon/states/{state_id}/sync_committees",
 		"/eth/v1/beacon/states/{state_id}/randao",
+		"/eth/v1/beacon/states/{state_id}/withdrawals",
 		"/eth/v1/beacon/headers",
 		"/eth/v1/beacon/headers/{block_id}",
 		"/eth/v1/beacon/blocks",
@@ -39,7 +40,9 @@ func (_ *BeaconEndpointFactory) Paths() []string {
 		"/eth/v1/beacon/pool/attester_slashings",
 		"/eth/v1/beacon/pool/proposer_slashings",
 		"/eth/v1/beacon/pool/voluntary_exits",
+		"/eth/v1/beacon/pool/bls_to_execution_changes",
 		"/eth/v1/beacon/pool/sync_committees",
+		"/eth/v1/beacon/pool/bls_to_execution_changes",
 		"/eth/v1/beacon/weak_subjectivity",
 		"/eth/v1/node/identity",
 		"/eth/v1/node/peers",
@@ -52,7 +55,7 @@ func (_ *BeaconEndpointFactory) Paths() []string {
 		"/eth/v2/debug/beacon/states/{state_id}",
 		"/eth/v1/debug/beacon/heads",
 		"/eth/v2/debug/beacon/heads",
-		"/eth/v1/debug/forkchoice",
+		"/eth/v1/debug/fork_choice",
 		"/eth/v1/config/fork_schedule",
 		"/eth/v1/config/deposit_contract",
 		"/eth/v1/config/spec",
@@ -108,6 +111,8 @@ func (_ *BeaconEndpointFactory) Create(path string) (*apimiddleware.Endpoint, er
 	case "/eth/v1/beacon/states/{state_id}/randao":
 		endpoint.RequestQueryParams = []apimiddleware.QueryParam{{Name: "epoch"}}
 		endpoint.GetResponse = &RandaoResponseJson{}
+	case "/eth/v1/beacon/states/{state_id}/withdrawals":
+		endpoint.GetResponse = &WithdrawalsResponseJson{}
 	case "/eth/v1/beacon/headers":
 		endpoint.RequestQueryParams = []apimiddleware.QueryParam{{Name: "slot"}, {Name: "parent_root", Hex: true}}
 		endpoint.GetResponse = &BlockHeadersResponseJson{}
@@ -143,6 +148,7 @@ func (_ *BeaconEndpointFactory) Create(path string) (*apimiddleware.Endpoint, er
 		endpoint.Hooks = apimiddleware.HookCollection{
 			OnPreSerializeMiddlewareResponseIntoJson: serializeBlindedBlock,
 		}
+		endpoint.CustomHandlers = []apimiddleware.CustomHandler{handleGetBlindedBeaconBlockSSZ}
 	case "/eth/v1/beacon/pool/attestations":
 		endpoint.RequestQueryParams = []apimiddleware.QueryParam{{Name: "slot"}, {Name: "committee_index"}}
 		endpoint.GetResponse = &AttestationsPoolResponseJson{}
@@ -160,6 +166,13 @@ func (_ *BeaconEndpointFactory) Create(path string) (*apimiddleware.Endpoint, er
 	case "/eth/v1/beacon/pool/voluntary_exits":
 		endpoint.PostRequest = &SignedVoluntaryExitJson{}
 		endpoint.GetResponse = &VoluntaryExitsPoolResponseJson{}
+	case "/eth/v1/beacon/pool/bls_to_execution_changes":
+		endpoint.PostRequest = &SubmitBLSToExecutionChangesRequest{}
+		endpoint.GetResponse = &BLSToExecutionChangesPoolResponseJson{}
+		endpoint.Err = &IndexedVerificationFailureErrorJson{}
+		endpoint.Hooks = apimiddleware.HookCollection{
+			OnPreDeserializeRequestBodyIntoContainer: wrapBLSChangesArray,
+		}
 	case "/eth/v1/beacon/pool/sync_committees":
 		endpoint.PostRequest = &SubmitSyncCommitteeSignaturesRequestJson{}
 		endpoint.Err = &IndexedVerificationFailureErrorJson{}
@@ -197,7 +210,7 @@ func (_ *BeaconEndpointFactory) Create(path string) (*apimiddleware.Endpoint, er
 		endpoint.GetResponse = &ForkChoiceHeadsResponseJson{}
 	case "/eth/v2/debug/beacon/heads":
 		endpoint.GetResponse = &V2ForkChoiceHeadsResponseJson{}
-	case "/eth/v1/debug/forkchoice":
+	case "/eth/v1/debug/fork_choice":
 		endpoint.GetResponse = &ForkChoiceDumpJson{}
 		endpoint.Hooks = apimiddleware.HookCollection{
 			OnPreSerializeMiddlewareResponseIntoJson: prepareForkChoiceResponse,

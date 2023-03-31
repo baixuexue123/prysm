@@ -2,18 +2,19 @@ package state_native_test
 
 import (
 	"context"
+	"math/big"
 	"testing"
 
 	"github.com/prysmaticlabs/go-bitfield"
-	statenative "github.com/prysmaticlabs/prysm/v3/beacon-chain/state/state-native"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
-	"github.com/prysmaticlabs/prysm/v3/consensus-types/blocks"
-	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
-	enginev1 "github.com/prysmaticlabs/prysm/v3/proto/engine/v1"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
-	"github.com/prysmaticlabs/prysm/v3/testing/assert"
-	"github.com/prysmaticlabs/prysm/v3/testing/require"
-	"github.com/prysmaticlabs/prysm/v3/testing/util"
+	statenative "github.com/prysmaticlabs/prysm/v4/beacon-chain/state/state-native"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/blocks"
+	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
+	enginev1 "github.com/prysmaticlabs/prysm/v4/proto/engine/v1"
+	ethpb "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/testing/assert"
+	"github.com/prysmaticlabs/prysm/v4/testing/require"
+	"github.com/prysmaticlabs/prysm/v4/testing/util"
 )
 
 func TestComputeFieldRootsWithHasher_Phase0(t *testing.T) {
@@ -253,11 +254,15 @@ func TestComputeFieldRootsWithHasher_Capella(t *testing.T) {
 	require.NoError(t, beaconState.SetInactivityScores([]uint64{1, 2, 3}))
 	require.NoError(t, beaconState.SetCurrentSyncCommittee(syncCommittee("current")))
 	require.NoError(t, beaconState.SetNextSyncCommittee(syncCommittee("next")))
-	wrappedHeader, err := blocks.WrappedExecutionPayloadHeaderCapella(executionPayloadHeaderCapella())
+	wrappedHeader, err := blocks.WrappedExecutionPayloadHeaderCapella(executionPayloadHeaderCapella(), big.NewInt(0))
 	require.NoError(t, err)
 	require.NoError(t, beaconState.SetLatestExecutionPayloadHeader(wrappedHeader))
 	require.NoError(t, beaconState.SetNextWithdrawalIndex(123))
 	require.NoError(t, beaconState.SetNextWithdrawalValidatorIndex(123))
+	require.NoError(t, beaconState.AppendHistoricalSummaries(&ethpb.HistoricalSummary{
+		BlockSummaryRoot: bytesutil.PadTo([]byte("block summary root"), 32),
+		StateSummaryRoot: bytesutil.PadTo([]byte("state summary root"), 32),
+	}))
 
 	nativeState, ok := beaconState.(*statenative.BeaconState)
 	require.Equal(t, true, ok)
@@ -298,6 +303,7 @@ func TestComputeFieldRootsWithHasher_Capella(t *testing.T) {
 		{0x39, 0x29, 0x16, 0xe8, 0x5a, 0xd2, 0xb, 0xbb, 0x1f, 0xef, 0x6a, 0xe0, 0x2d, 0xa6, 0x6a, 0x46, 0x81, 0xba, 0xcf, 0x86, 0xfc, 0x16, 0x22, 0x2a, 0x9b, 0x72, 0x96, 0x71, 0x2b, 0xc7, 0x5b, 0x9d},
 		{0x7b, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
 		{0x7b, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
+		{0xa1, 0x4, 0x64, 0x31, 0x2a, 0xa, 0x49, 0x31, 0x1c, 0x1, 0x41, 0x17, 0xc0, 0x52, 0x52, 0xfa, 0x4c, 0xf4, 0x95, 0x4f, 0x5c, 0xb0, 0x5a, 0x40, 0xc1, 0x32, 0x39, 0xc3, 0x7c, 0xb7, 0x2c, 0x27},
 	}
 	assert.DeepEqual(t, expected, root)
 }
@@ -462,13 +468,5 @@ func executionPayloadHeaderCapella() *enginev1.ExecutionPayloadHeaderCapella {
 		BlockHash:        bh[:],
 		TransactionsRoot: tr[:],
 		WithdrawalsRoot:  wr[:],
-	}
-}
-
-func withdrawal() *enginev1.Withdrawal {
-	return &enginev1.Withdrawal{
-		WithdrawalIndex:  123,
-		ExecutionAddress: bytesutil.PadTo([]byte("address"), 20),
-		Amount:           123,
 	}
 }

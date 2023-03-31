@@ -34,17 +34,16 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/prysmaticlabs/go-bitfield"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/p2p/peers/peerdata"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/p2p/peers/scorers"
-	"github.com/prysmaticlabs/prysm/v3/config/features"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
-	types "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	"github.com/prysmaticlabs/prysm/v3/crypto/rand"
-	pmath "github.com/prysmaticlabs/prysm/v3/math"
-	pb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
-	"github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1/metadata"
-	prysmTime "github.com/prysmaticlabs/prysm/v3/time"
-	"github.com/prysmaticlabs/prysm/v3/time/slots"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/p2p/peers/peerdata"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/p2p/peers/scorers"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	"github.com/prysmaticlabs/prysm/v4/crypto/rand"
+	pmath "github.com/prysmaticlabs/prysm/v4/math"
+	pb "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1/metadata"
+	prysmTime "github.com/prysmaticlabs/prysm/v4/time"
+	"github.com/prysmaticlabs/prysm/v4/time/slots"
 )
 
 const (
@@ -544,11 +543,6 @@ func (p *Status) Prune() {
 	p.store.Lock()
 	defer p.store.Unlock()
 
-	// Default to old method if flag isnt enabled.
-	if !features.Get().EnablePeerScorer {
-		p.deprecatedPrune()
-		return
-	}
 	// Exit early if there is nothing to prune.
 	if len(p.store.Peers()) <= p.store.Config().MaxPeers {
 		return
@@ -593,63 +587,17 @@ func (p *Status) Prune() {
 	p.tallyIPTracker()
 }
 
-// Deprecated: This is the old peer pruning method based on
-// bad response counts.
-func (p *Status) deprecatedPrune() {
-	// Exit early if there is nothing to prune.
-	if len(p.store.Peers()) <= p.store.Config().MaxPeers {
-		return
-	}
-
-	notBadPeer := func(peerData *peerdata.PeerData) bool {
-		return peerData.BadResponses < p.scorers.BadResponsesScorer().Params().Threshold
-	}
-	type peerResp struct {
-		pid     peer.ID
-		badResp int
-	}
-	peersToPrune := make([]*peerResp, 0)
-	// Select disconnected peers with a smaller bad response count.
-	for pid, peerData := range p.store.Peers() {
-		if peerData.ConnState == PeerDisconnected && notBadPeer(peerData) {
-			peersToPrune = append(peersToPrune, &peerResp{
-				pid:     pid,
-				badResp: peerData.BadResponses,
-			})
-		}
-	}
-
-	// Sort peers in ascending order, so the peers with the
-	// least amount of bad responses are pruned first. This
-	// is to protect the node from malicious/lousy peers so
-	// that their memory is still kept.
-	sort.Slice(peersToPrune, func(i, j int) bool {
-		return peersToPrune[i].badResp < peersToPrune[j].badResp
-	})
-
-	limitDiff := len(p.store.Peers()) - p.store.Config().MaxPeers
-	if limitDiff > len(peersToPrune) {
-		limitDiff = len(peersToPrune)
-	}
-	peersToPrune = peersToPrune[:limitDiff]
-	// Delete peers from map.
-	for _, peerData := range peersToPrune {
-		p.store.DeletePeerData(peerData.pid)
-	}
-	p.tallyIPTracker()
-}
-
 // BestFinalized returns the highest finalized epoch equal to or higher than ours that is agreed
 // upon by the majority of peers. This method may not return the absolute highest finalized, but
 // the finalized epoch in which most peers can serve blocks (plurality voting).
 // Ideally, all peers would be reporting the same finalized epoch but some may be behind due to their
 // own latency, or because of their finalized epoch at the time we queried them.
 // Returns epoch number and list of peers that are at or beyond that epoch.
-func (p *Status) BestFinalized(maxPeers int, ourFinalizedEpoch types.Epoch) (types.Epoch, []peer.ID) {
+func (p *Status) BestFinalized(maxPeers int, ourFinalizedEpoch primitives.Epoch) (primitives.Epoch, []peer.ID) {
 	connected := p.Connected()
-	finalizedEpochVotes := make(map[types.Epoch]uint64)
-	pidEpoch := make(map[peer.ID]types.Epoch, len(connected))
-	pidHead := make(map[peer.ID]types.Slot, len(connected))
+	finalizedEpochVotes := make(map[primitives.Epoch]uint64)
+	pidEpoch := make(map[peer.ID]primitives.Epoch, len(connected))
+	pidHead := make(map[peer.ID]primitives.Slot, len(connected))
 	potentialPIDs := make([]peer.ID, 0, len(connected))
 	for _, pid := range connected {
 		peerChainState, err := p.ChainState(pid)
@@ -662,7 +610,7 @@ func (p *Status) BestFinalized(maxPeers int, ourFinalizedEpoch types.Epoch) (typ
 	}
 
 	// Select the target epoch, which is the epoch most peers agree upon.
-	var targetEpoch types.Epoch
+	var targetEpoch primitives.Epoch
 	var mostVotes uint64
 	for epoch, count := range finalizedEpochVotes {
 		if count > mostVotes || (count == mostVotes && epoch > targetEpoch) {
@@ -697,11 +645,11 @@ func (p *Status) BestFinalized(maxPeers int, ourFinalizedEpoch types.Epoch) (typ
 
 // BestNonFinalized returns the highest known epoch, higher than ours,
 // and is shared by at least minPeers.
-func (p *Status) BestNonFinalized(minPeers int, ourHeadEpoch types.Epoch) (types.Epoch, []peer.ID) {
+func (p *Status) BestNonFinalized(minPeers int, ourHeadEpoch primitives.Epoch) (primitives.Epoch, []peer.ID) {
 	connected := p.Connected()
-	epochVotes := make(map[types.Epoch]uint64)
-	pidEpoch := make(map[peer.ID]types.Epoch, len(connected))
-	pidHead := make(map[peer.ID]types.Slot, len(connected))
+	epochVotes := make(map[primitives.Epoch]uint64)
+	pidEpoch := make(map[peer.ID]primitives.Epoch, len(connected))
+	pidHead := make(map[peer.ID]primitives.Slot, len(connected))
 	potentialPIDs := make([]peer.ID, 0, len(connected))
 
 	ourHeadSlot := params.BeaconConfig().SlotsPerEpoch.Mul(uint64(ourHeadEpoch))
@@ -717,7 +665,7 @@ func (p *Status) BestNonFinalized(minPeers int, ourHeadEpoch types.Epoch) (types
 	}
 
 	// Select the target epoch, which has enough peers' votes (>= minPeers).
-	var targetEpoch types.Epoch
+	var targetEpoch primitives.Epoch
 	for epoch, votes := range epochVotes {
 		if votes >= uint64(minPeers) && targetEpoch < epoch {
 			targetEpoch = epoch
@@ -746,9 +694,6 @@ func (p *Status) BestNonFinalized(minPeers int, ourHeadEpoch types.Epoch) (types
 // bad response count. In the future scoring will be used
 // to determine the most suitable peers to take out.
 func (p *Status) PeersToPrune() []peer.ID {
-	if !features.Get().EnablePeerScorer {
-		return p.deprecatedPeersToPrune()
-	}
 	connLimit := p.ConnectedPeerLimit()
 	inBoundLimit := uint64(p.InboundLimit())
 	activePeers := p.Active()
@@ -812,76 +757,11 @@ func (p *Status) PeersToPrune() []peer.ID {
 	return ids
 }
 
-// Deprecated: Is used to represent the older method
-// of pruning which utilized bad response counts.
-func (p *Status) deprecatedPeersToPrune() []peer.ID {
-	connLimit := p.ConnectedPeerLimit()
-	inBoundLimit := p.InboundLimit()
-	activePeers := p.Active()
-	numInboundPeers := len(p.InboundConnected())
-	// Exit early if we are still below our max
-	// limit.
-	if uint64(len(activePeers)) <= connLimit {
-		return []peer.ID{}
-	}
-	p.store.Lock()
-	defer p.store.Unlock()
-
-	type peerResp struct {
-		pid     peer.ID
-		badResp int
-	}
-	peersToPrune := make([]*peerResp, 0)
-	// Select connected and inbound peers to prune.
-	for pid, peerData := range p.store.Peers() {
-		if peerData.ConnState == PeerConnected &&
-			peerData.Direction == network.DirInbound {
-			peersToPrune = append(peersToPrune, &peerResp{
-				pid:     pid,
-				badResp: peerData.BadResponses,
-			})
-		}
-	}
-
-	// Sort in descending order to favour pruning peers with a
-	// higher bad response count.
-	sort.Slice(peersToPrune, func(i, j int) bool {
-		return peersToPrune[i].badResp > peersToPrune[j].badResp
-	})
-
-	// Determine amount of peers to prune using our
-	// max connection limit.
-	amountToPrune, err := pmath.Sub64(uint64(len(activePeers)), connLimit)
-	if err != nil {
-		// This should never happen
-		log.WithError(err).Error("Failed to determine amount of peers to prune")
-		return []peer.ID{}
-	}
-	// Also check for inbound peers above our limit.
-	excessInbound := uint64(0)
-	if numInboundPeers > inBoundLimit {
-		excessInbound = uint64(numInboundPeers - inBoundLimit)
-	}
-	// Prune the largest amount between excess peers and
-	// excess inbound peers.
-	if excessInbound > amountToPrune {
-		amountToPrune = excessInbound
-	}
-	if amountToPrune < uint64(len(peersToPrune)) {
-		peersToPrune = peersToPrune[:amountToPrune]
-	}
-	ids := make([]peer.ID, 0, len(peersToPrune))
-	for _, pr := range peersToPrune {
-		ids = append(ids, pr.pid)
-	}
-	return ids
-}
-
 // HighestEpoch returns the highest epoch reported epoch amongst peers.
-func (p *Status) HighestEpoch() types.Epoch {
+func (p *Status) HighestEpoch() primitives.Epoch {
 	p.store.RLock()
 	defer p.store.RUnlock()
-	var highestSlot types.Slot
+	var highestSlot primitives.Slot
 	for _, peerData := range p.store.Peers() {
 		if peerData != nil && peerData.ChainState != nil && peerData.ChainState.HeadSlot > highestSlot {
 			highestSlot = peerData.ChainState.HeadSlot

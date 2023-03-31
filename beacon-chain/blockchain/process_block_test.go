@@ -12,37 +12,35 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
-	mock "github.com/prysmaticlabs/prysm/v3/beacon-chain/blockchain/testing"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/cache"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/cache/depositcache"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/blocks"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/signing"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/transition"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/db"
-	testDB "github.com/prysmaticlabs/prysm/v3/beacon-chain/db/testing"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/execution"
-	mockExecution "github.com/prysmaticlabs/prysm/v3/beacon-chain/execution/testing"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/forkchoice"
-	doublylinkedtree "github.com/prysmaticlabs/prysm/v3/beacon-chain/forkchoice/doubly-linked-tree"
-	forkchoicetypes "github.com/prysmaticlabs/prysm/v3/beacon-chain/forkchoice/types"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/operations/attestations"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/operations/blstoexec"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/state"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/state/stategen"
-	fieldparams "github.com/prysmaticlabs/prysm/v3/config/fieldparams"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
-	consensusblocks "github.com/prysmaticlabs/prysm/v3/consensus-types/blocks"
-	"github.com/prysmaticlabs/prysm/v3/consensus-types/interfaces"
-	types "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	"github.com/prysmaticlabs/prysm/v3/crypto/bls"
-	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
-	enginev1 "github.com/prysmaticlabs/prysm/v3/proto/engine/v1"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
-	"github.com/prysmaticlabs/prysm/v3/runtime/version"
-	"github.com/prysmaticlabs/prysm/v3/testing/assert"
-	"github.com/prysmaticlabs/prysm/v3/testing/require"
-	"github.com/prysmaticlabs/prysm/v3/testing/util"
-	prysmTime "github.com/prysmaticlabs/prysm/v3/time"
+	mock "github.com/prysmaticlabs/prysm/v4/beacon-chain/blockchain/testing"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/cache"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/cache/depositcache"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/blocks"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/signing"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/transition"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/db"
+	testDB "github.com/prysmaticlabs/prysm/v4/beacon-chain/db/testing"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/execution"
+	mockExecution "github.com/prysmaticlabs/prysm/v4/beacon-chain/execution/testing"
+	doublylinkedtree "github.com/prysmaticlabs/prysm/v4/beacon-chain/forkchoice/doubly-linked-tree"
+	forkchoicetypes "github.com/prysmaticlabs/prysm/v4/beacon-chain/forkchoice/types"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/operations/attestations"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/state"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/state/stategen"
+	fieldparams "github.com/prysmaticlabs/prysm/v4/config/fieldparams"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
+	consensusblocks "github.com/prysmaticlabs/prysm/v4/consensus-types/blocks"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/interfaces"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	"github.com/prysmaticlabs/prysm/v4/crypto/bls"
+	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
+	enginev1 "github.com/prysmaticlabs/prysm/v4/proto/engine/v1"
+	ethpb "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/runtime/version"
+	"github.com/prysmaticlabs/prysm/v4/testing/assert"
+	"github.com/prysmaticlabs/prysm/v4/testing/require"
+	"github.com/prysmaticlabs/prysm/v4/testing/util"
+	prysmTime "github.com/prysmaticlabs/prysm/v4/time"
 	logTest "github.com/sirupsen/logrus/hooks/test"
 )
 
@@ -59,7 +57,7 @@ func TestStore_OnBlock(t *testing.T) {
 
 	service, err := NewService(ctx, opts...)
 	require.NoError(t, err)
-	genesisStateRoot := [32]byte{}
+	var genesisStateRoot [32]byte
 	genesis := blocks.NewGenesisBlock(genesisStateRoot[:])
 	util.SaveBlock(t, ctx, beaconDB, genesis)
 	validGenesisRoot, err := genesis.Block.HashTreeRoot()
@@ -67,6 +65,10 @@ func TestStore_OnBlock(t *testing.T) {
 	st, err := util.NewBeaconState()
 	require.NoError(t, err)
 	require.NoError(t, service.cfg.BeaconDB.SaveState(ctx, st.Copy(), validGenesisRoot))
+	ojc := &ethpb.Checkpoint{}
+	stfcs, root, err := prepareForkchoiceState(ctx, 0, validGenesisRoot, [32]byte{}, [32]byte{}, ojc, ojc)
+	require.NoError(t, err)
+	require.NoError(t, fcs.InsertNode(ctx, stfcs, root))
 	roots, err := blockTree1(t, beaconDB, validGenesisRoot[:])
 	require.NoError(t, err)
 	random := util.NewBeaconBlock()
@@ -75,11 +77,16 @@ func TestStore_OnBlock(t *testing.T) {
 	util.SaveBlock(t, ctx, beaconDB, random)
 	randomParentRoot, err := random.Block.HashTreeRoot()
 	assert.NoError(t, err)
+
 	require.NoError(t, service.cfg.BeaconDB.SaveStateSummary(ctx, &ethpb.StateSummary{Slot: st.Slot(), Root: randomParentRoot[:]}))
 	require.NoError(t, service.cfg.BeaconDB.SaveState(ctx, st.Copy(), randomParentRoot))
 	randomParentRoot2 := roots[1]
 	require.NoError(t, service.cfg.BeaconDB.SaveStateSummary(ctx, &ethpb.StateSummary{Slot: st.Slot(), Root: randomParentRoot2}))
 	require.NoError(t, service.cfg.BeaconDB.SaveState(ctx, st.Copy(), bytesutil.ToBytes32(randomParentRoot2)))
+	stfcs, root, err = prepareForkchoiceState(ctx, 2, bytesutil.ToBytes32(randomParentRoot2),
+		validGenesisRoot, [32]byte{'r'}, ojc, ojc)
+	require.NoError(t, err)
+	require.NoError(t, fcs.InsertNode(ctx, stfcs, root))
 
 	tests := []struct {
 		name          string
@@ -110,10 +117,11 @@ func TestStore_OnBlock(t *testing.T) {
 			blk: func() *ethpb.SignedBeaconBlock {
 				b := util.NewBeaconBlock()
 				b.Block.ParentRoot = randomParentRoot[:]
+				b.Block.Slot = 2
 				return b
 			}(),
 			s:             st.Copy(),
-			wantErrString: "is not a descendant of the current finalized block",
+			wantErrString: "not descendant of finalized checkpoint",
 		},
 		{
 			name: "same slot as finalized block",
@@ -131,7 +139,7 @@ func TestStore_OnBlock(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fRoot := bytesutil.ToBytes32(roots[0])
-			require.NoError(t, service.ForkChoicer().UpdateFinalizedCheckpoint(&forkchoicetypes.Checkpoint{Root: fRoot}))
+			require.NoError(t, service.cfg.ForkChoiceStore.UpdateFinalizedCheckpoint(&forkchoicetypes.Checkpoint{Root: fRoot}))
 			root, err := tt.blk.Block.HashTreeRoot()
 			assert.NoError(t, err)
 			wsb, err := consensusblocks.NewSignedBeaconBlock(tt.blk)
@@ -159,10 +167,10 @@ func TestStore_OnBlockBatch(t *testing.T) {
 	require.NoError(t, service.saveGenesisData(ctx, st))
 	bState := st.Copy()
 
-	var blks []interfaces.SignedBeaconBlock
+	var blks []interfaces.ReadOnlySignedBeaconBlock
 	var blkRoots [][32]byte
 	for i := 0; i < 97; i++ {
-		b, err := util.GenerateFullBlock(bState, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlock(bState, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -183,7 +191,7 @@ func TestStore_OnBlockBatch(t *testing.T) {
 	jcp := service.CurrentJustifiedCheckpt()
 	jroot := bytesutil.ToBytes32(jcp.Root)
 	require.Equal(t, blkRoots[63], jroot)
-	require.Equal(t, types.Epoch(2), service.cfg.ForkChoiceStore.JustifiedCheckpoint().Epoch)
+	require.Equal(t, primitives.Epoch(2), service.cfg.ForkChoiceStore.JustifiedCheckpoint().Epoch)
 }
 
 func TestStore_OnBlockBatch_NotifyNewPayload(t *testing.T) {
@@ -202,11 +210,11 @@ func TestStore_OnBlockBatch_NotifyNewPayload(t *testing.T) {
 	require.NoError(t, service.saveGenesisData(ctx, st))
 	bState := st.Copy()
 
-	var blks []interfaces.SignedBeaconBlock
+	var blks []interfaces.ReadOnlySignedBeaconBlock
 	var blkRoots [][32]byte
 	blkCount := 4
 	for i := 0; i <= blkCount; i++ {
-		b, err := util.GenerateFullBlock(bState, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlock(bState, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -237,7 +245,7 @@ func TestCachedPreState_CanGetFromStateSummary(t *testing.T) {
 
 	st, keys := util.DeterministicGenesisState(t, 64)
 	require.NoError(t, service.saveGenesisData(ctx, st))
-	b, err := util.GenerateFullBlock(st, keys, util.DefaultBlockGenConfig(), types.Slot(1))
+	b, err := util.GenerateFullBlock(st, keys, util.DefaultBlockGenConfig(), primitives.Slot(1))
 	require.NoError(t, err)
 	root, err := b.Block.HashTreeRoot()
 	require.NoError(t, err)
@@ -280,9 +288,9 @@ func TestFillForkChoiceMissingBlocks_CanSave(t *testing.T) {
 	r0 := bytesutil.ToBytes32(roots[0])
 	state, blkRoot, err := prepareForkchoiceState(ctx, 0, r0, service.originBlockRoot, [32]byte{}, fcp, fcp)
 	require.NoError(t, err)
-	require.NoError(t, service.ForkChoicer().InsertNode(ctx, state, blkRoot))
+	require.NoError(t, service.cfg.ForkChoiceStore.InsertNode(ctx, state, blkRoot))
 	fcp2 := &forkchoicetypes.Checkpoint{Epoch: 0, Root: r0}
-	require.NoError(t, service.ForkChoicer().UpdateFinalizedCheckpoint(fcp2))
+	require.NoError(t, service.cfg.ForkChoiceStore.UpdateFinalizedCheckpoint(fcp2))
 
 	err = service.fillInForkChoiceMissingBlocks(
 		context.Background(), wsb.Block(), beaconState.FinalizedCheckpoint(), beaconState.CurrentJustifiedCheckpoint())
@@ -331,9 +339,9 @@ func TestFillForkChoiceMissingBlocks_RootsMatch(t *testing.T) {
 	r0 := bytesutil.ToBytes32(roots[0])
 	state, blkRoot, err := prepareForkchoiceState(ctx, 0, r0, service.originBlockRoot, [32]byte{}, fcp, fcp)
 	require.NoError(t, err)
-	require.NoError(t, service.ForkChoicer().InsertNode(ctx, state, blkRoot))
+	require.NoError(t, service.cfg.ForkChoiceStore.InsertNode(ctx, state, blkRoot))
 	fcp2 := &forkchoicetypes.Checkpoint{Epoch: 0, Root: r0}
-	require.NoError(t, service.ForkChoicer().UpdateFinalizedCheckpoint(fcp2))
+	require.NoError(t, service.cfg.ForkChoiceStore.UpdateFinalizedCheckpoint(fcp2))
 
 	err = service.fillInForkChoiceMissingBlocks(
 		context.Background(), wsb.Block(), beaconState.FinalizedCheckpoint(), beaconState.CurrentJustifiedCheckpoint())
@@ -362,7 +370,7 @@ func TestFillForkChoiceMissingBlocks_FilterFinalized(t *testing.T) {
 	require.NoError(t, err)
 	service.cfg.ForkChoiceStore = doublylinkedtree.New()
 
-	genesisStateRoot := [32]byte{}
+	var genesisStateRoot [32]byte
 	genesis := blocks.NewGenesisBlock(genesisStateRoot[:])
 	util.SaveBlock(t, ctx, beaconDB, genesis)
 	validGenesisRoot, err := genesis.Block.HashTreeRoot()
@@ -398,7 +406,7 @@ func TestFillForkChoiceMissingBlocks_FilterFinalized(t *testing.T) {
 	beaconState, _ := util.DeterministicGenesisState(t, 32)
 
 	// Set finalized epoch to 2.
-	require.NoError(t, service.ForkChoicer().UpdateFinalizedCheckpoint(&forkchoicetypes.Checkpoint{Epoch: 2, Root: r64}))
+	require.NoError(t, service.cfg.ForkChoiceStore.UpdateFinalizedCheckpoint(&forkchoicetypes.Checkpoint{Epoch: 2, Root: r64}))
 	err = service.fillInForkChoiceMissingBlocks(
 		context.Background(), wsb.Block(), beaconState.FinalizedCheckpoint(), beaconState.CurrentJustifiedCheckpoint())
 	require.NoError(t, err)
@@ -421,7 +429,7 @@ func TestFillForkChoiceMissingBlocks_FinalizedSibling(t *testing.T) {
 	require.NoError(t, err)
 	service.cfg.ForkChoiceStore = doublylinkedtree.New()
 
-	genesisStateRoot := [32]byte{}
+	var genesisStateRoot [32]byte
 	genesis := blocks.NewGenesisBlock(genesisStateRoot[:])
 	util.SaveBlock(t, ctx, beaconDB, genesis)
 	validGenesisRoot, err := genesis.Block.HashTreeRoot()
@@ -443,7 +451,7 @@ func TestFillForkChoiceMissingBlocks_FinalizedSibling(t *testing.T) {
 
 	err = service.fillInForkChoiceMissingBlocks(
 		context.Background(), wsb.Block(), beaconState.FinalizedCheckpoint(), beaconState.CurrentJustifiedCheckpoint())
-	require.Equal(t, errNotDescendantOfFinalized.Error(), err.Error())
+	require.Equal(t, ErrNotDescendantOfFinalized.Error(), err.Error())
 }
 
 // blockTree1 constructs the following tree:
@@ -543,7 +551,7 @@ func TestCurrentSlot_HandlesOverflow(t *testing.T) {
 	svc := Service{genesisTime: prysmTime.Now().Add(1 * time.Hour)}
 
 	slot := svc.CurrentSlot()
-	require.Equal(t, types.Slot(0), slot, "Unexpected slot")
+	require.Equal(t, primitives.Slot(0), slot, "Unexpected slot")
 }
 func TestAncestorByDB_CtxErr(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -592,14 +600,14 @@ func TestAncestor_HandleSkipSlot(t *testing.T) {
 	}
 
 	// Slots 100 to 200 are skip slots. Requesting root at 150 will yield root at 100. The last physical block.
-	r, err := service.ancestor(context.Background(), r200[:], 150)
+	r, err := service.Ancestor(context.Background(), r200[:], 150)
 	require.NoError(t, err)
 	if bytesutil.ToBytes32(r) != r100 {
 		t.Error("Did not get correct root")
 	}
 
 	// Slots 1 to 100 are skip slots. Requesting root at 50 will yield root at 1. The last physical block.
-	r, err = service.ancestor(context.Background(), r200[:], 50)
+	r, err = service.Ancestor(context.Background(), r200[:], 50)
 	require.NoError(t, err)
 	if bytesutil.ToBytes32(r) != r1 {
 		t.Error("Did not get correct root")
@@ -640,7 +648,7 @@ func TestAncestor_CanUseForkchoice(t *testing.T) {
 		require.NoError(t, service.cfg.ForkChoiceStore.InsertNode(ctx, st, blkRoot))
 	}
 
-	r, err := service.ancestor(context.Background(), r200[:], 150)
+	r, err := service.Ancestor(context.Background(), r200[:], 150)
 	require.NoError(t, err)
 	if bytesutil.ToBytes32(r) != r100 {
 		t.Error("Did not get correct root")
@@ -688,7 +696,7 @@ func TestAncestor_CanUseDB(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, service.cfg.ForkChoiceStore.InsertNode(ctx, st, blkRoot))
 
-	r, err := service.ancestor(context.Background(), r200[:], 150)
+	r, err := service.Ancestor(context.Background(), r200[:], 150)
 	require.NoError(t, err)
 	if bytesutil.ToBytes32(r) != r100 {
 		t.Error("Did not get correct root")
@@ -707,87 +715,6 @@ func TestEnsureRootNotZeroHashes(t *testing.T) {
 	root := [32]byte{'b'}
 	r = service.ensureRootNotZeros(root)
 	assert.Equal(t, root, r, "Did not get wanted justified root")
-}
-
-func TestVerifyBlkDescendant(t *testing.T) {
-	beaconDB := testDB.SetupDB(t)
-	ctx := context.Background()
-
-	fcs := doublylinkedtree.New()
-	opts := []Option{
-		WithDatabase(beaconDB),
-		WithStateGen(stategen.New(beaconDB, fcs)),
-		WithForkChoiceStore(fcs),
-	}
-	b := util.NewBeaconBlock()
-	b.Block.Slot = 32
-	r, err := b.Block.HashTreeRoot()
-	require.NoError(t, err)
-	util.SaveBlock(t, ctx, beaconDB, b)
-
-	b1 := util.NewBeaconBlock()
-	b1.Block.Slot = 32
-	b1.Block.Body.Graffiti = bytesutil.PadTo([]byte{'a'}, 32)
-	r1, err := b1.Block.HashTreeRoot()
-	require.NoError(t, err)
-	util.SaveBlock(t, ctx, beaconDB, b1)
-
-	type args struct {
-		parentRoot    [32]byte
-		finalizedRoot [32]byte
-	}
-	tests := []struct {
-		name             string
-		args             args
-		wantedErr        string
-		invalidBlockRoot bool
-	}{
-		{
-			name: "could not get finalized block in block service cache",
-			args: args{
-				finalizedRoot: [32]byte{'a'},
-			},
-			wantedErr: "block not found in cache or db",
-		},
-		{
-			name: "could not get finalized block root in DB",
-			args: args{
-				finalizedRoot: r,
-				parentRoot:    [32]byte{'a'},
-			},
-			wantedErr: "could not get finalized block root",
-		},
-		{
-			name: "is not descendant",
-			args: args{
-				finalizedRoot: r1,
-				parentRoot:    r,
-			},
-			wantedErr:        "is not a descendant of the current finalized block slot",
-			invalidBlockRoot: true,
-		},
-		{
-			name: "is descendant",
-			args: args{
-				finalizedRoot: r,
-				parentRoot:    r,
-			},
-		},
-	}
-	for _, tt := range tests {
-		service, err := NewService(ctx, opts...)
-		require.NoError(t, err)
-		require.NoError(t, service.ForkChoicer().UpdateFinalizedCheckpoint(&forkchoicetypes.Checkpoint{Root: tt.args.finalizedRoot, Epoch: 1}))
-		err = service.VerifyFinalizedBlkDescendant(ctx, tt.args.parentRoot)
-		if tt.wantedErr != "" {
-			assert.ErrorContains(t, tt.wantedErr, err)
-			if tt.invalidBlockRoot {
-				require.Equal(t, true, IsInvalidBlock(err))
-			}
-		} else if err != nil {
-			assert.NoError(t, err)
-		}
-	}
 }
 
 func TestHandleEpochBoundary_UpdateFirstSlot(t *testing.T) {
@@ -825,7 +752,7 @@ func TestOnBlock_CanFinalize_WithOnTick(t *testing.T) {
 	require.NoError(t, fcs.UpdateFinalizedCheckpoint(&forkchoicetypes.Checkpoint{Root: service.originBlockRoot}))
 
 	testState := gs.Copy()
-	for i := types.Slot(1); i <= 4*params.BeaconConfig().SlotsPerEpoch; i++ {
+	for i := primitives.Slot(1); i <= 4*params.BeaconConfig().SlotsPerEpoch; i++ {
 		blk, err := util.GenerateFullBlock(testState, keys, util.DefaultBlockGenConfig(), i)
 		require.NoError(t, err)
 		r, err := blk.Block.HashTreeRoot()
@@ -838,9 +765,9 @@ func TestOnBlock_CanFinalize_WithOnTick(t *testing.T) {
 		require.NoError(t, err)
 	}
 	cp := service.CurrentJustifiedCheckpt()
-	require.Equal(t, types.Epoch(3), cp.Epoch)
+	require.Equal(t, primitives.Epoch(3), cp.Epoch)
 	cp = service.FinalizedCheckpt()
-	require.Equal(t, types.Epoch(2), cp.Epoch)
+	require.Equal(t, primitives.Epoch(2), cp.Epoch)
 
 	// The update should persist in DB.
 	j, err := service.cfg.BeaconDB.JustifiedCheckpoint(ctx)
@@ -874,7 +801,7 @@ func TestOnBlock_CanFinalize(t *testing.T) {
 	require.NoError(t, service.saveGenesisData(ctx, gs))
 
 	testState := gs.Copy()
-	for i := types.Slot(1); i <= 4*params.BeaconConfig().SlotsPerEpoch; i++ {
+	for i := primitives.Slot(1); i <= 4*params.BeaconConfig().SlotsPerEpoch; i++ {
 		blk, err := util.GenerateFullBlock(testState, keys, util.DefaultBlockGenConfig(), i)
 		require.NoError(t, err)
 		r, err := blk.Block.HashTreeRoot()
@@ -886,9 +813,9 @@ func TestOnBlock_CanFinalize(t *testing.T) {
 		require.NoError(t, err)
 	}
 	cp := service.CurrentJustifiedCheckpt()
-	require.Equal(t, types.Epoch(3), cp.Epoch)
+	require.Equal(t, primitives.Epoch(3), cp.Epoch)
 	cp = service.FinalizedCheckpt()
-	require.Equal(t, types.Epoch(2), cp.Epoch)
+	require.Equal(t, primitives.Epoch(2), cp.Epoch)
 
 	// The update should persist in DB.
 	j, err := service.cfg.BeaconDB.JustifiedCheckpoint(ctx)
@@ -976,7 +903,7 @@ func TestOnBlock_CallNewPayloadAndForkchoiceUpdated(t *testing.T) {
 	gs, keys := util.DeterministicGenesisState(t, 32)
 	require.NoError(t, service.saveGenesisData(ctx, gs))
 	testState := gs.Copy()
-	for i := types.Slot(1); i < params.BeaconConfig().SlotsPerEpoch; i++ {
+	for i := primitives.Slot(1); i < params.BeaconConfig().SlotsPerEpoch; i++ {
 		blk, err := util.GenerateFullBlock(testState, keys, util.DefaultBlockGenConfig(), i)
 		require.NoError(t, err)
 		r, err := blk.Block.HashTreeRoot()
@@ -1004,7 +931,7 @@ func TestInsertFinalizedDeposits(t *testing.T) {
 	assert.NoError(t, gs.SetEth1Data(&ethpb.Eth1Data{DepositCount: 10}))
 	assert.NoError(t, gs.SetEth1DepositIndex(8))
 	assert.NoError(t, service.cfg.StateGen.SaveState(ctx, [32]byte{'m', 'o', 'c', 'k'}, gs))
-	zeroSig := [96]byte{}
+	var zeroSig [96]byte
 	for i := uint64(0); i < uint64(4*params.BeaconConfig().SlotsPerEpoch); i++ {
 		root := []byte(strconv.Itoa(int(i)))
 		assert.NoError(t, depositCache.InsertDeposit(ctx, &ethpb.Deposit{Data: &ethpb.Deposit_Data{
@@ -1042,7 +969,7 @@ func TestInsertFinalizedDeposits_MultipleFinalizedRoutines(t *testing.T) {
 	assert.NoError(t, gs2.SetEth1Data(&ethpb.Eth1Data{DepositCount: 15}))
 	assert.NoError(t, gs2.SetEth1DepositIndex(13))
 	assert.NoError(t, service.cfg.StateGen.SaveState(ctx, [32]byte{'m', 'o', 'c', 'k', '2'}, gs2))
-	zeroSig := [96]byte{}
+	var zeroSig [96]byte
 	for i := uint64(0); i < uint64(4*params.BeaconConfig().SlotsPerEpoch); i++ {
 		root := []byte(strconv.Itoa(int(i)))
 		assert.NoError(t, depositCache.InsertDeposit(ctx, &ethpb.Deposit{Data: &ethpb.Deposit_Data{
@@ -1074,7 +1001,7 @@ func TestInsertFinalizedDeposits_MultipleFinalizedRoutines(t *testing.T) {
 	}
 }
 
-func TestRemoveBlockAttestationsInPool_Canonical(t *testing.T) {
+func TestRemoveBlockAttestationsInPool(t *testing.T) {
 	genesis, keys := util.DeterministicGenesisState(t, 64)
 	b, err := util.GenerateFullBlock(genesis, keys, util.DefaultBlockGenConfig(), 1)
 	assert.NoError(t, err)
@@ -1091,27 +1018,8 @@ func TestRemoveBlockAttestationsInPool_Canonical(t *testing.T) {
 	require.NoError(t, service.cfg.AttPool.SaveAggregatedAttestations(atts))
 	wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 	require.NoError(t, err)
-	require.NoError(t, service.pruneCanonicalAttsFromPool(ctx, r, wsb))
+	require.NoError(t, service.pruneAttsFromPool(wsb))
 	require.Equal(t, 0, service.cfg.AttPool.AggregatedAttestationCount())
-}
-
-func TestRemoveBlockAttestationsInPool_NonCanonical(t *testing.T) {
-	genesis, keys := util.DeterministicGenesisState(t, 64)
-	b, err := util.GenerateFullBlock(genesis, keys, util.DefaultBlockGenConfig(), 1)
-	assert.NoError(t, err)
-	r, err := b.Block.HashTreeRoot()
-	require.NoError(t, err)
-
-	ctx := context.Background()
-	beaconDB := testDB.SetupDB(t)
-	service := setupBeaconChain(t, beaconDB)
-
-	atts := b.Block.Body.Attestations
-	require.NoError(t, service.cfg.AttPool.SaveAggregatedAttestations(atts))
-	wsb, err := consensusblocks.NewSignedBeaconBlock(b)
-	require.NoError(t, err)
-	require.NoError(t, service.pruneCanonicalAttsFromPool(ctx, r, wsb))
-	require.Equal(t, 1, service.cfg.AttPool.AggregatedAttestationCount())
 }
 
 func Test_getStateVersionAndPayload(t *testing.T) {
@@ -1455,7 +1363,7 @@ func Test_verifyBlkFinalizedSlot_invalidBlock(t *testing.T) {
 	}
 	service, err := NewService(ctx, opts...)
 	require.NoError(t, err)
-	require.NoError(t, service.ForkChoicer().UpdateFinalizedCheckpoint(&forkchoicetypes.Checkpoint{Epoch: 1}))
+	require.NoError(t, service.cfg.ForkChoiceStore.UpdateFinalizedCheckpoint(&forkchoicetypes.Checkpoint{Epoch: 1}))
 	blk := util.HydrateBeaconBlock(&ethpb.BeaconBlock{Slot: 1})
 	wb, err := consensusblocks.NewBeaconBlock(blk)
 	require.NoError(t, err)
@@ -1514,7 +1422,7 @@ func TestStore_NoViableHead_FCU(t *testing.T) {
 		driftGenesisTime(service, int64(i), 0)
 		st, err := service.HeadState(ctx)
 		require.NoError(t, err)
-		b, err := util.GenerateFullBlock(st, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlock(st, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -1527,7 +1435,7 @@ func TestStore_NoViableHead_FCU(t *testing.T) {
 		driftGenesisTime(service, int64(i), 0)
 		st, err := service.HeadState(ctx)
 		require.NoError(t, err)
-		b, err := util.GenerateFullBlockAltair(st, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlockAltair(st, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -1541,7 +1449,7 @@ func TestStore_NoViableHead_FCU(t *testing.T) {
 		driftGenesisTime(service, int64(i), 0)
 		st, err := service.HeadState(ctx)
 		require.NoError(t, err)
-		b, err := util.GenerateFullBlockBellatrix(st, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlockBellatrix(st, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -1551,8 +1459,8 @@ func TestStore_NoViableHead_FCU(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// Check that we haven't justified the second epoch yet
-	jc := service.ForkChoicer().JustifiedCheckpoint()
-	require.Equal(t, types.Epoch(0), jc.Epoch)
+	jc := service.cfg.ForkChoiceStore.JustifiedCheckpoint()
+	require.Equal(t, primitives.Epoch(0), jc.Epoch)
 
 	// import a block that justifies the second epoch
 	driftGenesisTime(service, 18, 0)
@@ -1566,14 +1474,14 @@ func TestStore_NoViableHead_FCU(t *testing.T) {
 	require.NoError(t, err)
 	err = service.onBlock(ctx, wsb, firstInvalidRoot)
 	require.NoError(t, err)
-	jc = service.ForkChoicer().JustifiedCheckpoint()
-	require.Equal(t, types.Epoch(2), jc.Epoch)
+	jc = service.cfg.ForkChoiceStore.JustifiedCheckpoint()
+	require.Equal(t, primitives.Epoch(2), jc.Epoch)
 
 	sjc := validHeadState.CurrentJustifiedCheckpoint()
-	require.Equal(t, types.Epoch(0), sjc.Epoch)
+	require.Equal(t, primitives.Epoch(0), sjc.Epoch)
 	lvh := b.Block.Body.ExecutionPayload.ParentHash
 	// check our head
-	require.Equal(t, firstInvalidRoot, service.ForkChoicer().CachedHeadRoot())
+	require.Equal(t, firstInvalidRoot, service.cfg.ForkChoiceStore.CachedHeadRoot())
 
 	// import another block to find out that it was invalid
 	mockEngine = &mockExecution.EngineClient{ErrNewPayload: execution.ErrAcceptedSyncingPayloadStatus, ErrForkchoiceUpdated: execution.ErrInvalidPayloadStatus, ForkChoiceUpdatedResp: lvh}
@@ -1592,7 +1500,7 @@ func TestStore_NoViableHead_FCU(t *testing.T) {
 	// Check that forkchoice's head is the last invalid block imported. The
 	// store's headroot is the previous head (since the invalid block did
 	// not finish importing) one and that the node is optimistic
-	require.Equal(t, root, service.ForkChoicer().CachedHeadRoot())
+	require.Equal(t, root, service.cfg.ForkChoiceStore.CachedHeadRoot())
 	headRoot, err := service.HeadRoot(ctx)
 	require.NoError(t, err)
 	require.Equal(t, firstInvalidRoot, bytesutil.ToBytes32(headRoot))
@@ -1614,7 +1522,7 @@ func TestStore_NoViableHead_FCU(t *testing.T) {
 	require.NoError(t, err)
 	// Check the newly imported block is head, it justified the right
 	// checkpoint and the node is no longer optimistic
-	require.Equal(t, root, service.ForkChoicer().CachedHeadRoot())
+	require.Equal(t, root, service.cfg.ForkChoiceStore.CachedHeadRoot())
 	sjc = service.CurrentJustifiedCheckpt()
 	require.Equal(t, jc.Epoch, sjc.Epoch)
 	require.Equal(t, jc.Root, bytesutil.ToBytes32(sjc.Root))
@@ -1674,7 +1582,7 @@ func TestStore_NoViableHead_NewPayload(t *testing.T) {
 		driftGenesisTime(service, int64(i), 0)
 		st, err := service.HeadState(ctx)
 		require.NoError(t, err)
-		b, err := util.GenerateFullBlock(st, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlock(st, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -1687,7 +1595,7 @@ func TestStore_NoViableHead_NewPayload(t *testing.T) {
 		driftGenesisTime(service, int64(i), 0)
 		st, err := service.HeadState(ctx)
 		require.NoError(t, err)
-		b, err := util.GenerateFullBlockAltair(st, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlockAltair(st, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -1701,7 +1609,7 @@ func TestStore_NoViableHead_NewPayload(t *testing.T) {
 		driftGenesisTime(service, int64(i), 0)
 		st, err := service.HeadState(ctx)
 		require.NoError(t, err)
-		b, err := util.GenerateFullBlockBellatrix(st, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlockBellatrix(st, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -1711,8 +1619,8 @@ func TestStore_NoViableHead_NewPayload(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// Check that we haven't justified the second epoch yet
-	jc := service.ForkChoicer().JustifiedCheckpoint()
-	require.Equal(t, types.Epoch(0), jc.Epoch)
+	jc := service.cfg.ForkChoiceStore.JustifiedCheckpoint()
+	require.Equal(t, primitives.Epoch(0), jc.Epoch)
 
 	// import a block that justifies the second epoch
 	driftGenesisTime(service, 18, 0)
@@ -1726,14 +1634,14 @@ func TestStore_NoViableHead_NewPayload(t *testing.T) {
 	require.NoError(t, err)
 	err = service.onBlock(ctx, wsb, firstInvalidRoot)
 	require.NoError(t, err)
-	jc = service.ForkChoicer().JustifiedCheckpoint()
-	require.Equal(t, types.Epoch(2), jc.Epoch)
+	jc = service.cfg.ForkChoiceStore.JustifiedCheckpoint()
+	require.Equal(t, primitives.Epoch(2), jc.Epoch)
 
 	sjc := validHeadState.CurrentJustifiedCheckpoint()
-	require.Equal(t, types.Epoch(0), sjc.Epoch)
+	require.Equal(t, primitives.Epoch(0), sjc.Epoch)
 	lvh := b.Block.Body.ExecutionPayload.ParentHash
 	// check our head
-	require.Equal(t, firstInvalidRoot, service.ForkChoicer().CachedHeadRoot())
+	require.Equal(t, firstInvalidRoot, service.cfg.ForkChoiceStore.CachedHeadRoot())
 
 	// import another block to find out that it was invalid
 	mockEngine = &mockExecution.EngineClient{ErrNewPayload: execution.ErrInvalidPayloadStatus, NewPayloadResp: lvh}
@@ -1752,7 +1660,7 @@ func TestStore_NoViableHead_NewPayload(t *testing.T) {
 	// Check that forkchoice's head and store's headroot are the previous head (since the invalid block did
 	// not finish importing and it was never imported to forkchoice). Check
 	// also that the node is optimistic
-	require.Equal(t, firstInvalidRoot, service.ForkChoicer().CachedHeadRoot())
+	require.Equal(t, firstInvalidRoot, service.cfg.ForkChoiceStore.CachedHeadRoot())
 	headRoot, err := service.HeadRoot(ctx)
 	require.NoError(t, err)
 	require.Equal(t, firstInvalidRoot, bytesutil.ToBytes32(headRoot))
@@ -1774,7 +1682,7 @@ func TestStore_NoViableHead_NewPayload(t *testing.T) {
 	require.NoError(t, err)
 	// Check the newly imported block is head, it justified the right
 	// checkpoint and the node is no longer optimistic
-	require.Equal(t, root, service.ForkChoicer().CachedHeadRoot())
+	require.Equal(t, root, service.cfg.ForkChoiceStore.CachedHeadRoot())
 	sjc = service.CurrentJustifiedCheckpt()
 	require.Equal(t, jc.Epoch, sjc.Epoch)
 	require.Equal(t, jc.Root, bytesutil.ToBytes32(sjc.Root))
@@ -1835,7 +1743,7 @@ func TestStore_NoViableHead_Liveness(t *testing.T) {
 		driftGenesisTime(service, int64(i), 0)
 		st, err := service.HeadState(ctx)
 		require.NoError(t, err)
-		b, err := util.GenerateFullBlock(st, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlock(st, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -1848,7 +1756,7 @@ func TestStore_NoViableHead_Liveness(t *testing.T) {
 		driftGenesisTime(service, int64(i), 0)
 		st, err := service.HeadState(ctx)
 		require.NoError(t, err)
-		b, err := util.GenerateFullBlockAltair(st, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlockAltair(st, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -1876,7 +1784,7 @@ func TestStore_NoViableHead_Liveness(t *testing.T) {
 	require.NoError(t, err)
 	lvh := b.Block.Body.ExecutionPayload.BlockHash
 	validjc := validHeadState.CurrentJustifiedCheckpoint()
-	require.Equal(t, types.Epoch(0), validjc.Epoch)
+	require.Equal(t, primitives.Epoch(0), validjc.Epoch)
 
 	// import blocks 13 through 18 to justify 12
 	invalidRoots := make([][32]byte, 19-13)
@@ -1884,7 +1792,7 @@ func TestStore_NoViableHead_Liveness(t *testing.T) {
 		driftGenesisTime(service, int64(i), 0)
 		st, err := service.HeadState(ctx)
 		require.NoError(t, err)
-		b, err := util.GenerateFullBlockBellatrix(st, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlockBellatrix(st, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -1894,9 +1802,9 @@ func TestStore_NoViableHead_Liveness(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// Check that we have justified the second epoch
-	jc := service.ForkChoicer().JustifiedCheckpoint()
-	require.Equal(t, types.Epoch(2), jc.Epoch)
-	invalidHeadRoot := service.ForkChoicer().CachedHeadRoot()
+	jc := service.cfg.ForkChoiceStore.JustifiedCheckpoint()
+	require.Equal(t, primitives.Epoch(2), jc.Epoch)
+	invalidHeadRoot := service.cfg.ForkChoiceStore.CachedHeadRoot()
 
 	// import block 19 to find out that the whole chain 13--18 was in fact
 	// invalid
@@ -1917,7 +1825,7 @@ func TestStore_NoViableHead_Liveness(t *testing.T) {
 	// Check that forkchoice's head and store's headroot are the previous head (since the invalid block did
 	// not finish importing and it was never imported to forkchoice). Check
 	// also that the node is optimistic
-	require.Equal(t, invalidHeadRoot, service.ForkChoicer().CachedHeadRoot())
+	require.Equal(t, invalidHeadRoot, service.cfg.ForkChoiceStore.CachedHeadRoot())
 	headRoot, err := service.HeadRoot(ctx)
 	require.NoError(t, err)
 	require.Equal(t, invalidHeadRoot, bytesutil.ToBytes32(headRoot))
@@ -1933,7 +1841,7 @@ func TestStore_NoViableHead_Liveness(t *testing.T) {
 	// Check that the node's justified checkpoint does not agree with the
 	// last valid state's justified checkpoint
 	sjc := service.CurrentJustifiedCheckpt()
-	require.Equal(t, types.Epoch(2), sjc.Epoch)
+	require.Equal(t, primitives.Epoch(2), sjc.Epoch)
 
 	// import another block based on the last valid head state
 	mockEngine = &mockExecution.EngineClient{}
@@ -1947,7 +1855,7 @@ func TestStore_NoViableHead_Liveness(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, service.onBlock(ctx, wsb, root))
 	// Check that the head is still INVALID and the node is still optimistic
-	require.Equal(t, invalidHeadRoot, service.ForkChoicer().CachedHeadRoot())
+	require.Equal(t, invalidHeadRoot, service.cfg.ForkChoiceStore.CachedHeadRoot())
 	optimistic, err = service.IsOptimistic(ctx)
 	require.NoError(t, err)
 	require.Equal(t, true, optimistic)
@@ -1957,7 +1865,7 @@ func TestStore_NoViableHead_Liveness(t *testing.T) {
 	for i := 21; i < 30; i++ {
 		driftGenesisTime(service, int64(i), 0)
 		require.NoError(t, err)
-		b, err := util.GenerateFullBlockBellatrix(st, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlockBellatrix(st, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -1969,7 +1877,7 @@ func TestStore_NoViableHead_Liveness(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// Head should still be INVALID and the node optimistic
-	require.Equal(t, invalidHeadRoot, service.ForkChoicer().CachedHeadRoot())
+	require.Equal(t, invalidHeadRoot, service.cfg.ForkChoiceStore.CachedHeadRoot())
 	optimistic, err = service.IsOptimistic(ctx)
 	require.NoError(t, err)
 	require.Equal(t, true, optimistic)
@@ -1985,15 +1893,13 @@ func TestStore_NoViableHead_Liveness(t *testing.T) {
 	require.NoError(t, err)
 	err = service.onBlock(ctx, wsb, root)
 	require.NoError(t, err)
-	require.Equal(t, root, service.ForkChoicer().CachedHeadRoot())
+	require.Equal(t, root, service.cfg.ForkChoiceStore.CachedHeadRoot())
 	sjc = service.CurrentJustifiedCheckpt()
-	require.Equal(t, types.Epoch(4), sjc.Epoch)
+	require.Equal(t, primitives.Epoch(4), sjc.Epoch)
 	optimistic, err = service.IsOptimistic(ctx)
 	require.NoError(t, err)
 	require.Equal(t, false, optimistic)
 }
-
-type newForkChoicer func() forkchoice.ForkChoicer
 
 // See the description in #10777 and #10782 for the full setup
 // We sync optimistically a chain of blocks. Block 12 is the first block in Epoch
@@ -2015,10 +1921,12 @@ func TestNoViableHead_Reboot(t *testing.T) {
 	attSrv, err := attestations.NewService(ctx, &attestations.Config{})
 	require.NoError(t, err)
 	newfc := doublylinkedtree.New()
+	newStateGen := stategen.New(beaconDB, newfc)
+	newfc.SetBalancesByRooter(newStateGen.ActiveNonSlashedBalancesByRoot)
 	opts := []Option{
 		WithDatabase(beaconDB),
 		WithAttestationPool(attestations.NewPool()),
-		WithStateGen(stategen.New(beaconDB, newfc)),
+		WithStateGen(newStateGen),
 		WithForkChoiceStore(newfc),
 		WithStateNotifier(&mock.MockStateNotifier{}),
 		WithExecutionEngineCaller(mockEngine),
@@ -2046,7 +1954,7 @@ func TestNoViableHead_Reboot(t *testing.T) {
 		driftGenesisTime(service, int64(i), 0)
 		st, err := service.HeadState(ctx)
 		require.NoError(t, err)
-		b, err := util.GenerateFullBlock(st, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlock(st, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -2059,7 +1967,7 @@ func TestNoViableHead_Reboot(t *testing.T) {
 		driftGenesisTime(service, int64(i), 0)
 		st, err := service.HeadState(ctx)
 		require.NoError(t, err)
-		b, err := util.GenerateFullBlockAltair(st, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlockAltair(st, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -2087,14 +1995,14 @@ func TestNoViableHead_Reboot(t *testing.T) {
 	require.NoError(t, err)
 	lvh := b.Block.Body.ExecutionPayload.BlockHash
 	validjc := validHeadState.CurrentJustifiedCheckpoint()
-	require.Equal(t, types.Epoch(0), validjc.Epoch)
+	require.Equal(t, primitives.Epoch(0), validjc.Epoch)
 
 	// import blocks 13 through 18 to justify 12
 	for i := 13; i < 19; i++ {
 		driftGenesisTime(service, int64(i), 0)
 		st, err := service.HeadState(ctx)
 		require.NoError(t, err)
-		b, err := util.GenerateFullBlockBellatrix(st, keys, util.DefaultBlockGenConfig(), types.Slot(i))
+		b, err := util.GenerateFullBlockBellatrix(st, keys, util.DefaultBlockGenConfig(), primitives.Slot(i))
 		require.NoError(t, err)
 		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
 		require.NoError(t, err)
@@ -2103,8 +2011,8 @@ func TestNoViableHead_Reboot(t *testing.T) {
 		require.NoError(t, service.onBlock(ctx, wsb, root))
 	}
 	// Check that we have justified the second epoch
-	jc := service.ForkChoicer().JustifiedCheckpoint()
-	require.Equal(t, types.Epoch(2), jc.Epoch)
+	jc := service.cfg.ForkChoiceStore.JustifiedCheckpoint()
+	require.Equal(t, primitives.Epoch(2), jc.Epoch)
 
 	// import block 19 to find out that the whole chain 13--18 was in fact
 	// invalid
@@ -2128,10 +2036,16 @@ func TestNoViableHead_Reboot(t *testing.T) {
 	require.Equal(t, blk, nil)
 
 	service.cfg.ForkChoiceStore = doublylinkedtree.New()
+	justified, err := service.cfg.BeaconDB.JustifiedCheckpoint(ctx)
+	require.NoError(t, err)
+
+	jroot := bytesutil.ToBytes32(justified.Root)
+	require.NoError(t, service.cfg.BeaconDB.SaveState(ctx, genesisState, jroot))
+	service.cfg.ForkChoiceStore.SetBalancesByRooter(service.cfg.StateGen.ActiveNonSlashedBalancesByRoot)
 	require.NoError(t, service.StartFromSavedState(genesisState))
 
 	// Forkchoice has the genesisRoot loaded at startup
-	require.Equal(t, genesisRoot, service.ensureRootNotZeros(service.ForkChoicer().CachedHeadRoot()))
+	require.Equal(t, genesisRoot, service.ensureRootNotZeros(service.cfg.ForkChoiceStore.CachedHeadRoot()))
 	// Service's store has the finalized state as headRoot
 	headRoot, err := service.HeadRoot(ctx)
 	require.NoError(t, err)
@@ -2139,12 +2053,11 @@ func TestNoViableHead_Reboot(t *testing.T) {
 	optimistic, err := service.IsOptimistic(ctx)
 	require.NoError(t, err)
 	require.Equal(t, false, optimistic)
-	require.Equal(t, false, service.ForkChoicer().AllTipsAreInvalid())
 
 	// Check that the node's justified checkpoint does not agree with the
 	// last valid state's justified checkpoint
 	sjc := service.CurrentJustifiedCheckpt()
-	require.Equal(t, types.Epoch(2), sjc.Epoch)
+	require.Equal(t, primitives.Epoch(2), sjc.Epoch)
 
 	// import another block based on the last valid head state
 	mockEngine = &mockExecution.EngineClient{}
@@ -2156,68 +2069,17 @@ func TestNoViableHead_Reboot(t *testing.T) {
 	require.NoError(t, err)
 	root, err = b.Block.HashTreeRoot()
 	require.NoError(t, err)
-	require.NoError(t, service.onBlock(ctx, wsb, root))
-	// Check that the head is still INVALID and the node is optimistic
-	require.Equal(t, genesisRoot, service.ensureRootNotZeros(service.ForkChoicer().CachedHeadRoot()))
-	headRoot, err = service.HeadRoot(ctx)
-	require.NoError(t, err)
-	require.Equal(t, genesisRoot, bytesutil.ToBytes32(headRoot))
-
-	optimistic, err = service.IsOptimistic(ctx)
-	require.NoError(t, err)
-	require.Equal(t, true, optimistic)
-	require.Equal(t, true, service.ForkChoicer().AllTipsAreInvalid())
-	st, err = service.cfg.StateGen.StateByRoot(ctx, root)
-	require.NoError(t, err)
-
-	// Import blocks 21--23
-	for i := 21; i < 24; i++ {
-		driftGenesisTime(service, int64(i), 0)
-		require.NoError(t, err)
-		b, err := util.GenerateFullBlockBellatrix(st, keys, util.DefaultBlockGenConfig(), types.Slot(i))
-		require.NoError(t, err)
-		wsb, err := consensusblocks.NewSignedBeaconBlock(b)
-		require.NoError(t, err)
-		root, err = b.Block.HashTreeRoot()
-		require.NoError(t, err)
-		err = service.onBlock(ctx, wsb, root)
-		require.NoError(t, err)
-		st, err = service.cfg.StateGen.StateByRoot(ctx, root)
-		require.NoError(t, err)
-	}
-	// Head should still be INVALID and the node is optimistic
-	require.Equal(t, genesisRoot, service.ensureRootNotZeros(service.ForkChoicer().CachedHeadRoot()))
-	headRoot, err = service.HeadRoot(ctx)
-	require.NoError(t, err)
-	require.Equal(t, genesisRoot, bytesutil.ToBytes32(headRoot))
-
-	optimistic, err = service.IsOptimistic(ctx)
-	require.NoError(t, err)
-	require.Equal(t, true, optimistic)
-	require.Equal(t, true, service.ForkChoicer().AllTipsAreInvalid())
-
-	// Import block 24, it should justify Epoch 3 and become HEAD, the node
-	// recovers
-	driftGenesisTime(service, 24, 0)
-	b, err = util.GenerateFullBlockBellatrix(st, keys, util.DefaultBlockGenConfig(), 24)
-	require.NoError(t, err)
-	wsb, err = consensusblocks.NewSignedBeaconBlock(b)
-	require.NoError(t, err)
-	root, err = b.Block.HashTreeRoot()
-	require.NoError(t, err)
-	err = service.onBlock(ctx, wsb, root)
-	require.NoError(t, err)
-	require.Equal(t, root, service.ForkChoicer().CachedHeadRoot())
+	// We use onBlockBatch here because the valid chain is missing in forkchoice
+	require.NoError(t, service.onBlockBatch(ctx, []interfaces.ReadOnlySignedBeaconBlock{wsb}, [][32]byte{root}))
+	// Check that the head is now VALID and the node is not optimistic
+	require.Equal(t, genesisRoot, service.ensureRootNotZeros(service.cfg.ForkChoiceStore.CachedHeadRoot()))
 	headRoot, err = service.HeadRoot(ctx)
 	require.NoError(t, err)
 	require.Equal(t, root, bytesutil.ToBytes32(headRoot))
 
-	sjc = service.CurrentJustifiedCheckpt()
-	require.Equal(t, types.Epoch(3), sjc.Epoch)
 	optimistic, err = service.IsOptimistic(ctx)
 	require.NoError(t, err)
 	require.Equal(t, false, optimistic)
-	require.Equal(t, false, service.ForkChoicer().AllTipsAreInvalid())
 }
 
 func TestOnBlock_HandleBlockAttestations(t *testing.T) {
@@ -2302,66 +2164,7 @@ func TestFillMissingBlockPayloadId_DiffSlotExitEarly(t *testing.T) {
 
 	service, err := NewService(ctx, opts...)
 	require.NoError(t, err)
-	require.NoError(t, service.fillMissingBlockPayloadId(ctx, time.Unix(int64(params.BeaconConfig().SecondsPerSlot/2), 0)))
-}
-
-func TestHandleBBlockBLSToExecutionChanges(t *testing.T) {
-	ctx := context.Background()
-	beaconDB := testDB.SetupDB(t)
-	fc := doublylinkedtree.New()
-	pool := blstoexec.NewPool()
-	opts := []Option{
-		WithDatabase(beaconDB),
-		WithStateGen(stategen.New(beaconDB, fc)),
-		WithForkChoiceStore(fc),
-		WithStateNotifier(&mock.MockStateNotifier{}),
-		WithBLSToExecPool(pool),
-	}
-	service, err := NewService(ctx, opts...)
-	require.NoError(t, err)
-
-	t.Run("pre Capella block", func(t *testing.T) {
-		body := &ethpb.BeaconBlockBodyBellatrix{}
-		pbb := &ethpb.BeaconBlockBellatrix{
-			Body: body,
-		}
-		blk, err := consensusblocks.NewBeaconBlock(pbb)
-		require.NoError(t, err)
-		require.NoError(t, service.handleBlockBLSToExecChanges(blk))
-	})
-
-	t.Run("Post Capella no changes", func(t *testing.T) {
-		body := &ethpb.BeaconBlockBodyCapella{}
-		pbb := &ethpb.BeaconBlockCapella{
-			Body: body,
-		}
-		blk, err := consensusblocks.NewBeaconBlock(pbb)
-		require.NoError(t, err)
-		require.NoError(t, service.handleBlockBLSToExecChanges(blk))
-	})
-
-	t.Run("Post Capella some changes", func(t *testing.T) {
-		idx := types.ValidatorIndex(123)
-		change := &ethpb.BLSToExecutionChange{
-			ValidatorIndex: idx,
-		}
-		signedChange := &ethpb.SignedBLSToExecutionChange{
-			Message: change,
-		}
-		body := &ethpb.BeaconBlockBodyCapella{
-			BlsToExecutionChanges: []*ethpb.SignedBLSToExecutionChange{signedChange},
-		}
-		pbb := &ethpb.BeaconBlockCapella{
-			Body: body,
-		}
-		blk, err := consensusblocks.NewBeaconBlock(pbb)
-		require.NoError(t, err)
-
-		pool.InsertBLSToExecChange(signedChange)
-		require.Equal(t, true, pool.ValidatorExists(idx))
-		require.NoError(t, service.handleBlockBLSToExecChanges(blk))
-		require.Equal(t, false, pool.ValidatorExists(idx))
-	})
+	require.NoError(t, service.fillMissingBlockPayloadId(ctx), 0)
 }
 
 // Helper function to simulate the block being on time or delayed for proposer

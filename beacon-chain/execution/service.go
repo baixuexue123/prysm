@@ -20,24 +20,24 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/cache/depositcache"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/feed"
-	statefeed "github.com/prysmaticlabs/prysm/v3/beacon-chain/core/feed/state"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/transition"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/db"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/execution/types"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/state"
-	native "github.com/prysmaticlabs/prysm/v3/beacon-chain/state/state-native"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/state/stategen"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
-	"github.com/prysmaticlabs/prysm/v3/container/trie"
-	contracts "github.com/prysmaticlabs/prysm/v3/contracts/deposit"
-	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
-	"github.com/prysmaticlabs/prysm/v3/monitoring/clientstats"
-	"github.com/prysmaticlabs/prysm/v3/network"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
-	prysmTime "github.com/prysmaticlabs/prysm/v3/time"
-	"github.com/prysmaticlabs/prysm/v3/time/slots"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/cache/depositcache"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/feed"
+	statefeed "github.com/prysmaticlabs/prysm/v4/beacon-chain/core/feed/state"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/core/transition"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/db"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/execution/types"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/state"
+	native "github.com/prysmaticlabs/prysm/v4/beacon-chain/state/state-native"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/state/stategen"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
+	"github.com/prysmaticlabs/prysm/v4/container/trie"
+	contracts "github.com/prysmaticlabs/prysm/v4/contracts/deposit"
+	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
+	"github.com/prysmaticlabs/prysm/v4/monitoring/clientstats"
+	"github.com/prysmaticlabs/prysm/v4/network"
+	ethpb "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	prysmTime "github.com/prysmaticlabs/prysm/v4/time"
+	"github.com/prysmaticlabs/prysm/v4/time/slots"
 	"github.com/sirupsen/logrus"
 )
 
@@ -319,10 +319,15 @@ func (s *Service) followedBlockHeight(ctx context.Context) (uint64, error) {
 	latestBlockTime := uint64(0)
 	if s.latestEth1Data.BlockTime > followTime {
 		latestBlockTime = s.latestEth1Data.BlockTime - followTime
+		// This should only come into play in testnets - when the chain hasn't advanced past the follow distance,
+		// we don't want to consider any block before the genesis block.
+		if s.latestEth1Data.BlockHeight < params.BeaconConfig().Eth1FollowDistance {
+			latestBlockTime = s.latestEth1Data.BlockTime
+		}
 	}
 	blk, err := s.BlockByTimestamp(ctx, latestBlockTime)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrapf(err, "BlockByTimestamp=%d", latestBlockTime)
 	}
 	return blk.Number.Uint64(), nil
 }
@@ -408,29 +413,27 @@ func (s *Service) batchRequestHeaders(startBlock, endBlock uint64) ([]*types.Hea
 	requestRange := (endBlock - startBlock) + 1
 	elems := make([]gethRPC.BatchElem, 0, requestRange)
 	headers := make([]*types.HeaderInfo, 0, requestRange)
-	errs := make([]error, 0, requestRange)
 	if requestRange == 0 {
 		return headers, nil
 	}
 	for i := startBlock; i <= endBlock; i++ {
 		header := &types.HeaderInfo{}
-		err := error(nil)
 		elems = append(elems, gethRPC.BatchElem{
 			Method: "eth_getBlockByNumber",
 			Args:   []interface{}{hexutil.EncodeBig(big.NewInt(0).SetUint64(i)), false},
 			Result: header,
-			Error:  err,
+			Error:  error(nil),
 		})
 		headers = append(headers, header)
-		errs = append(errs, err)
+
 	}
 	ioErr := s.rpcClient.BatchCall(elems)
 	if ioErr != nil {
 		return nil, ioErr
 	}
-	for _, e := range errs {
-		if e != nil {
-			return nil, e
+	for _, e := range elems {
+		if e.Error != nil {
+			return nil, e.Error
 		}
 	}
 	for _, h := range headers {
@@ -467,11 +470,12 @@ func (s *Service) handleETH1FollowDistance() {
 	}
 	if !s.chainStartData.Chainstarted {
 		if err := s.processChainStartFromBlockNum(ctx, big.NewInt(int64(s.latestEth1Data.LastRequestedBlock))); err != nil {
-			s.runError = err
+			s.runError = errors.Wrap(err, "processChainStartFromBlockNum")
 			log.Error(err)
 			return
 		}
 	}
+
 	// If the last requested block has not changed,
 	// we do not request batched logs as this means there are no new
 	// logs for the powchain service to process. Also it is a potential
@@ -481,7 +485,7 @@ func (s *Service) handleETH1FollowDistance() {
 		return
 	}
 	if err := s.requestBatchedHeadersAndLogs(ctx); err != nil {
-		s.runError = err
+		s.runError = errors.Wrap(err, "requestBatchedHeadersAndLogs")
 		log.Error(err)
 		return
 	}
@@ -511,6 +515,7 @@ func (s *Service) initPOWService() {
 			ctx := s.ctx
 			header, err := s.HeaderByNumber(ctx, nil)
 			if err != nil {
+				err = errors.Wrap(err, "HeaderByNumber")
 				s.retryExecutionClientConnection(ctx, err)
 				errorLogger(err, "Unable to retrieve latest execution client header")
 				continue
@@ -523,6 +528,7 @@ func (s *Service) initPOWService() {
 			s.latestEth1DataLock.Unlock()
 
 			if err := s.processPastLogs(ctx); err != nil {
+				err = errors.Wrap(err, "processPastLogs")
 				s.retryExecutionClientConnection(ctx, err)
 				errorLogger(
 					err,
@@ -532,6 +538,7 @@ func (s *Service) initPOWService() {
 			}
 			// Cache eth1 headers from our voting period.
 			if err := s.cacheHeadersForEth1DataVote(ctx); err != nil {
+				err = errors.Wrap(err, "cacheHeadersForEth1DataVote")
 				s.retryExecutionClientConnection(ctx, err)
 				if errors.Is(err, errBlockTimeTooLate) {
 					log.WithError(err).Debug("Unable to cache headers for execution client votes")
@@ -550,6 +557,7 @@ func (s *Service) initPOWService() {
 				if genHash != [32]byte{} {
 					genHeader, err := s.HeaderByHash(ctx, genHash)
 					if err != nil {
+						err = errors.Wrapf(err, "HeaderByHash, hash=%#x", genHash)
 						s.retryExecutionClientConnection(ctx, err)
 						errorLogger(err, "Unable to retrieve proof-of-stake genesis block data")
 						continue
@@ -558,6 +566,7 @@ func (s *Service) initPOWService() {
 				}
 				s.chainStartData.GenesisBlock = genBlock
 				if err := s.savePowchainData(ctx); err != nil {
+					err = errors.Wrap(err, "savePowchainData")
 					s.retryExecutionClientConnection(ctx, err)
 					errorLogger(err, "Unable to save execution client data")
 					continue
@@ -641,11 +650,11 @@ func (s *Service) cacheHeadersForEth1DataVote(ctx context.Context) error {
 	// Find the end block to request from.
 	end, err := s.followedBlockHeight(ctx)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "followedBlockHeight")
 	}
 	start, err := s.determineEarliestVotingBlock(ctx, end)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "determineEarliestVotingBlock=%d", end)
 	}
 	return s.cacheBlockHeaders(start, end)
 }
@@ -656,6 +665,12 @@ func (s *Service) cacheBlockHeaders(start, end uint64) error {
 	for i := start; i < end; i += batchSize {
 		startReq := i
 		endReq := i + batchSize
+		if endReq > 0 {
+			// Reduce the end request by one
+			// to prevent total batch size from exceeding
+			// the allotted limit.
+			endReq -= 1
+		}
 		if endReq > end {
 			endReq = end
 		}
@@ -677,7 +692,7 @@ func (s *Service) cacheBlockHeaders(start, end uint64) error {
 				}
 				continue
 			}
-			return err
+			return errors.Wrapf(err, "cacheBlockHeaders, start=%d, end=%d", startReq, endReq)
 		}
 	}
 	return nil
@@ -696,12 +711,20 @@ func (s *Service) determineEarliestVotingBlock(ctx context.Context, followBlock 
 		}
 		return earliestBlk, nil
 	}
+	// This should only come into play in testnets - when the chain hasn't advanced past the follow distance,
+	// we don't want to consider any block before the genesis block.
+	if s.latestEth1Data.BlockHeight < params.BeaconConfig().Eth1FollowDistance {
+		return 0, nil
+	}
 	votingTime := slots.VotingPeriodStartTime(genesisTime, currSlot)
 	followBackDist := 2 * params.BeaconConfig().SecondsPerETH1Block * params.BeaconConfig().Eth1FollowDistance
 	if followBackDist > votingTime {
 		return 0, errors.Errorf("invalid genesis time provided. %d > %d", followBackDist, votingTime)
 	}
 	earliestValidTime := votingTime - followBackDist
+	if earliestValidTime < genesisTime {
+		return 0, nil
+	}
 	hdr, err := s.BlockByTimestamp(ctx, earliestValidTime)
 	if err != nil {
 		return 0, err

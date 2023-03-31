@@ -8,8 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/prysmaticlabs/prysm/v3/testing/endtoend/params"
-	e2etypes "github.com/prysmaticlabs/prysm/v3/testing/endtoend/types"
+	"github.com/prysmaticlabs/prysm/v4/testing/endtoend/params"
+	e2etypes "github.com/prysmaticlabs/prysm/v4/testing/endtoend/types"
 )
 
 // NetworkId is the ID of the ETH1 chain.
@@ -20,7 +20,6 @@ const KeystorePassword = "password"
 
 const minerPasswordFile = "password.txt"
 const minerFile = "UTC--2021-12-22T19-14-08.590377700Z--878705ba3f8bc32fcf7f4caa1a35e72af65cf766"
-const timeGapPerTX = 100 * time.Millisecond
 const timeGapPerMiningTX = 250 * time.Millisecond
 
 var _ e2etypes.ComponentRunner = (*NodeSet)(nil)

@@ -5,10 +5,10 @@ import (
 	"io"
 	"sort"
 
-	"github.com/prysmaticlabs/prysm/v3/cmd"
-	"github.com/prysmaticlabs/prysm/v3/cmd/validator/flags"
-	"github.com/prysmaticlabs/prysm/v3/config/features"
-	"github.com/prysmaticlabs/prysm/v3/runtime/debug"
+	"github.com/prysmaticlabs/prysm/v4/cmd"
+	"github.com/prysmaticlabs/prysm/v4/cmd/validator/flags"
+	"github.com/prysmaticlabs/prysm/v4/config/features"
+	"github.com/prysmaticlabs/prysm/v4/runtime/debug"
 	"github.com/urfave/cli/v2"
 )
 
@@ -86,6 +86,7 @@ var appHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			flags.BeaconRPCProviderFlag,
 			flags.BeaconRPCGatewayProviderFlag,
+			flags.BeaconRESTApiProviderFlag,
 			flags.CertFlag,
 			flags.EnableWebFlag,
 			flags.DisablePenaltyRewardLogFlag,
@@ -128,16 +129,6 @@ var appHelpFlagGroups = []flagGroup{
 }
 
 func init() {
-	// Append the Beacon REST API flags
-	if flags.BuiltWithBeaconApi {
-		for groupIndex := range appHelpFlagGroups {
-			group := &appHelpFlagGroups[groupIndex]
-			if group.Name == "validator" {
-				group.Flags = append(group.Flags, flags.BeaconRESTApiProviderFlag)
-			}
-		}
-	}
-
 	cli.AppHelpTemplate = appHelpTemplate
 
 	type helpData struct {

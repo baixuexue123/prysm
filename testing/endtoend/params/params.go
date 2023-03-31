@@ -14,9 +14,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/prysmaticlabs/prysm/v3/io/file"
+	"github.com/prysmaticlabs/prysm/v4/io/file"
 )
 
 // params struct defines the parameters needed for running E2E tests to properly handle test sharding.
@@ -26,9 +27,13 @@ type params struct {
 	TestShardIndex            int
 	BeaconNodeCount           int
 	LighthouseBeaconNodeCount int
-	ContractAddress           common.Address
 	Ports                     *ports
 	Paths                     *paths
+	Eth1GenesisBlock          *types.Block
+	StartTime                 time.Time
+	CLGenesisTime             uint64
+	Eth1GenesisTime           uint64
+	NumberOfExecutionCreds    uint64
 }
 
 type ports struct {
@@ -115,6 +120,9 @@ var StandardLighthouseNodeCount = 2
 // DepositCount is the number of deposits the E2E runner should make to evaluate post-genesis deposit processing.
 var DepositCount = uint64(64)
 
+// PregenesisExecCreds is the number of withdrawal credentials of genesis validators which use an execution address.
+var PregenesisExecCreds = uint64(8)
+
 // NumOfExecEngineTxs is the number of transaction sent to the execution engine.
 var NumOfExecEngineTxs = uint64(200)
 
@@ -149,6 +157,8 @@ const (
 	ValidatorMetricsPort = ValidatorGatewayPort + portSpan
 
 	JaegerTracingPort = 9150
+
+	StartupBufferSecs = 15
 )
 
 func logDir() string {
@@ -198,12 +208,16 @@ func Init(t *testing.T, beaconNodeCount int) error {
 		return err
 	}
 
+	genTime := uint64(time.Now().Unix()) + StartupBufferSecs
 	TestParams = &params{
-		TestPath:        filepath.Join(testPath, fmt.Sprintf("shard-%d", testShardIndex)),
-		LogPath:         logPath,
-		TestShardIndex:  testShardIndex,
-		BeaconNodeCount: beaconNodeCount,
-		Ports:           testPorts,
+		TestPath:               filepath.Join(testPath, fmt.Sprintf("shard-%d", testShardIndex)),
+		LogPath:                logPath,
+		TestShardIndex:         testShardIndex,
+		BeaconNodeCount:        beaconNodeCount,
+		Ports:                  testPorts,
+		CLGenesisTime:          genTime,
+		Eth1GenesisTime:        genTime,
+		NumberOfExecutionCreds: PregenesisExecCreds,
 	}
 	return nil
 }
@@ -247,6 +261,7 @@ func InitMultiClient(t *testing.T, beaconNodeCount int, lighthouseNodeCount int)
 		return err
 	}
 
+	genTime := uint64(time.Now().Unix()) + StartupBufferSecs
 	TestParams = &params{
 		TestPath:                  filepath.Join(testPath, fmt.Sprintf("shard-%d", testShardIndex)),
 		LogPath:                   logPath,
@@ -254,6 +269,9 @@ func InitMultiClient(t *testing.T, beaconNodeCount int, lighthouseNodeCount int)
 		BeaconNodeCount:           beaconNodeCount,
 		LighthouseBeaconNodeCount: lighthouseNodeCount,
 		Ports:                     testPorts,
+		CLGenesisTime:             genTime,
+		Eth1GenesisTime:           genTime,
+		NumberOfExecutionCreds:    PregenesisExecCreds,
 	}
 	return nil
 }

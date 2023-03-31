@@ -8,9 +8,9 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	fieldparams "github.com/prysmaticlabs/prysm/v3/config/fieldparams"
-	"github.com/prysmaticlabs/prysm/v3/crypto/bls/common"
-	"github.com/prysmaticlabs/prysm/v3/crypto/rand"
+	fieldparams "github.com/prysmaticlabs/prysm/v4/config/fieldparams"
+	"github.com/prysmaticlabs/prysm/v4/crypto/bls/common"
+	"github.com/prysmaticlabs/prysm/v4/crypto/rand"
 	blst "github.com/supranational/blst/bindings/go"
 )
 
@@ -194,6 +194,15 @@ func AggregateSignatures(sigs []common.Signature) common.Signature {
 	signature := new(blstAggregateSignature)
 	signature.Aggregate(rawSigs, false)
 	return &Signature{s: signature.ToAffine()}
+}
+
+// VerifySignature verifies a single signature using public key and message.
+func VerifySignature(sig []byte, msg [32]byte, pubKey common.PublicKey) (bool, error) {
+	rSig, err := SignatureFromBytes(sig)
+	if err != nil {
+		return false, err
+	}
+	return rSig.Verify(pubKey, msg[:]), nil
 }
 
 // VerifyMultipleSignatures verifies a non-singular set of signatures and its respective pubkeys and messages.

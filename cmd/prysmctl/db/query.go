@@ -7,7 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	bolt "go.etcd.io/bbolt"
@@ -21,9 +21,14 @@ var queryFlags = struct {
 }{}
 
 var queryCmd = &cli.Command{
-	Name:   "query",
-	Usage:  "database query tool",
-	Action: queryAction,
+	Name:  "query",
+	Usage: "database query tool",
+	Action: func(cliCtx *cli.Context) error {
+		if err := queryAction(cliCtx); err != nil {
+			log.WithError(err).Fatal("Could not query db")
+		}
+		return nil
+	},
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:        "bucket",

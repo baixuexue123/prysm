@@ -10,18 +10,19 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/holiman/uint256"
 	"github.com/pkg/errors"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
-	"github.com/prysmaticlabs/prysm/v3/consensus-types/blocks"
-	"github.com/prysmaticlabs/prysm/v3/consensus-types/interfaces"
-	types "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
-	"github.com/prysmaticlabs/prysm/v3/time/slots"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/blocks"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/interfaces"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	"github.com/prysmaticlabs/prysm/v4/encoding/bytesutil"
+	"github.com/prysmaticlabs/prysm/v4/runtime/version"
+	"github.com/prysmaticlabs/prysm/v4/time/slots"
 	"github.com/sirupsen/logrus"
 )
 
 // validateMergeBlock validates terminal block hash in the event of manual overrides before checking for total difficulty.
 //
-// def validate_merge_block(block: BeaconBlock) -> None:
+// def validate_merge_block(block: ReadOnlyBeaconBlock) -> None:
 //
 //	if TERMINAL_BLOCK_HASH != Hash32():
 //	    # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
@@ -37,7 +38,7 @@ import (
 //	assert pow_parent is not None
 //	# Check if `pow_block` is a valid terminal PoW block
 //	assert is_valid_terminal_pow_block(pow_block, pow_parent)
-func (s *Service) validateMergeBlock(ctx context.Context, b interfaces.SignedBeaconBlock) error {
+func (s *Service) validateMergeBlock(ctx context.Context, b interfaces.ReadOnlySignedBeaconBlock) error {
 	if err := blocks.BeaconBlockIsNil(b); err != nil {
 		return err
 	}
@@ -48,8 +49,12 @@ func (s *Service) validateMergeBlock(ctx context.Context, b interfaces.SignedBea
 	if payload.IsNil() {
 		return errors.New("nil execution payload")
 	}
-	if err := validateTerminalBlockHash(b.Block().Slot(), payload); err != nil {
+	ok, err := canUseValidatedTerminalBlockHash(b.Block().Slot(), payload)
+	if err != nil {
 		return errors.Wrap(err, "could not validate terminal block hash")
+	}
+	if ok {
+		return nil
 	}
 	mergeBlockParentHash, mergeBlockTD, err := s.getBlkParentHashAndTD(ctx, payload.ParentHash())
 	if err != nil {
@@ -92,6 +97,7 @@ func (s *Service) getBlkParentHashAndTD(ctx context.Context, blkHash []byte) ([]
 	if blk == nil {
 		return nil, nil, errors.New("pow block is nil")
 	}
+	blk.Version = version.Bellatrix
 	blkTDBig, err := hexutil.DecodeBig(blk.TotalDifficulty)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "could not decode merge block total difficulty")
@@ -103,7 +109,7 @@ func (s *Service) getBlkParentHashAndTD(ctx context.Context, blkHash []byte) ([]
 	return blk.ParentHash[:], blkTDUint256, nil
 }
 
-// validateTerminalBlockHash validates if the merge block is a valid terminal PoW block.
+// canUseValidatedTerminalBlockHash validates if the merge block is a valid terminal PoW block.
 // spec code:
 // if TERMINAL_BLOCK_HASH != Hash32():
 //
@@ -111,17 +117,17 @@ func (s *Service) getBlkParentHashAndTD(ctx context.Context, blkHash []byte) ([]
 //	assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
 //	assert block.body.execution_payload.parent_hash == TERMINAL_BLOCK_HASH
 //	return
-func validateTerminalBlockHash(blkSlot types.Slot, payload interfaces.ExecutionData) error {
+func canUseValidatedTerminalBlockHash(blkSlot primitives.Slot, payload interfaces.ExecutionData) (bool, error) {
 	if bytesutil.ToBytes32(params.BeaconConfig().TerminalBlockHash.Bytes()) == [32]byte{} {
-		return nil
+		return false, nil
 	}
 	if params.BeaconConfig().TerminalBlockHashActivationEpoch > slots.ToEpoch(blkSlot) {
-		return errors.New("terminal block hash activation epoch not reached")
+		return false, errors.New("terminal block hash activation epoch not reached")
 	}
 	if !bytes.Equal(payload.ParentHash(), params.BeaconConfig().TerminalBlockHash.Bytes()) {
-		return errors.New("parent hash does not match terminal block hash")
+		return false, errors.New("parent hash does not match terminal block hash")
 	}
-	return nil
+	return true, nil
 }
 
 // validateTerminalBlockDifficulties validates terminal pow block by comparing own total difficulty with parent's total difficulty.

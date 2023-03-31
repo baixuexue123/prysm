@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	nativetypes "github.com/prysmaticlabs/prysm/v3/beacon-chain/state/state-native/types"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
-	types "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
-	"github.com/prysmaticlabs/prysm/v3/testing/assert"
-	"github.com/prysmaticlabs/prysm/v3/testing/require"
+	"github.com/prysmaticlabs/prysm/v4/beacon-chain/state/state-native/types"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
+	"github.com/prysmaticlabs/prysm/v4/consensus-types/primitives"
+	ethpb "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/testing/assert"
+	"github.com/prysmaticlabs/prysm/v4/testing/require"
 )
 
 func TestBeaconState_RotateAttestations(t *testing.T) {
@@ -24,7 +24,7 @@ func TestBeaconState_RotateAttestations(t *testing.T) {
 	s, ok := st.(*BeaconState)
 	require.Equal(t, true, ok)
 	require.Equal(t, 0, len(s.currentEpochAttestationsVal()))
-	require.Equal(t, types.Slot(456), s.previousEpochAttestationsVal()[0].Data.Slot)
+	require.Equal(t, primitives.Slot(456), s.previousEpochAttestationsVal()[0].Data.Slot)
 }
 
 func TestAppendBeyondIndicesLimit(t *testing.T) {
@@ -57,7 +57,7 @@ func TestAppendBeyondIndicesLimit(t *testing.T) {
 	require.NoError(t, err)
 	s, ok := st.(*BeaconState)
 	require.Equal(t, true, ok)
-	for i := nativetypes.FieldIndex(0); i < nativetypes.FieldIndex(params.BeaconConfig().BeaconStateFieldCount); i++ {
+	for i := types.FieldIndex(0); i < types.FieldIndex(params.BeaconConfig().BeaconStateFieldCount); i++ {
 		s.dirtyFields[i] = true
 	}
 	_, err = st.HashTreeRoot(context.Background())
@@ -65,12 +65,12 @@ func TestAppendBeyondIndicesLimit(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		assert.NoError(t, st.AppendValidator(&ethpb.Validator{}))
 	}
-	assert.Equal(t, false, s.rebuildTrie[nativetypes.Validators])
-	assert.NotEqual(t, len(s.dirtyIndices[nativetypes.Validators]), 0)
+	assert.Equal(t, false, s.rebuildTrie[types.Validators])
+	assert.NotEqual(t, len(s.dirtyIndices[types.Validators]), 0)
 
 	for i := 0; i < indicesLimit; i++ {
 		assert.NoError(t, st.AppendValidator(&ethpb.Validator{}))
 	}
-	assert.Equal(t, true, s.rebuildTrie[nativetypes.Validators])
-	assert.Equal(t, len(s.dirtyIndices[nativetypes.Validators]), 0)
+	assert.Equal(t, true, s.rebuildTrie[types.Validators])
+	assert.Equal(t, len(s.dirtyIndices[types.Validators]), 0)
 }

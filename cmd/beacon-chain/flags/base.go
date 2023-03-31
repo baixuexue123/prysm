@@ -5,7 +5,8 @@ package flags
 import (
 	"strings"
 
-	"github.com/prysmaticlabs/prysm/v3/config/params"
+	"github.com/prysmaticlabs/prysm/v4/cmd"
+	"github.com/prysmaticlabs/prysm/v4/config/params"
 	"github.com/urfave/cli/v2"
 )
 
@@ -37,13 +38,6 @@ var (
 		Name: "execution-headers",
 		Usage: "A comma separated list of key value pairs to pass as HTTP headers for all execution " +
 			"client calls. Example: --execution-headers=key1=value1,key2=value2",
-	}
-	// Deprecated: HTTPWeb3ProviderFlag is a deprecated flag and is an alias for the ExecutionEngineEndpoint flag.
-	HTTPWeb3ProviderFlag = &cli.StringFlag{
-		Name:   "http-web3provider",
-		Usage:  "DEPRECATED: A mainchain web3 provider string http endpoint. Can contain auth header as well in the format --http-web3provider=\"https://goerli.infura.io/v3/xxxx,Basic xxx\" for project secret (base64 encoded) and --http-web3provider=\"https://goerli.infura.io/v3/xxxx,Bearer xxx\" for jwt use",
-		Value:  "http://localhost:8551",
-		Hidden: true,
 	}
 	// ExecutionJWTSecretFlag provides a path to a file containing a hex-encoded string representing a 32 byte secret
 	// used to authenticate with an execution node via HTTP. This is required if using an HTTP connection, otherwise all requests
@@ -245,5 +239,11 @@ var (
 		Usage: "Sets the block hash epoch to manual overrides the default TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH value. " +
 			"WARNING: This flag should be used only if you have a clear understanding that community has decided to override the terminal block hash activation epoch. " +
 			"Incorrect usage will result in your node experience consensus failure.",
+	}
+	// SlasherDirFlag defines a path on disk where the slasher database is stored.
+	SlasherDirFlag = &cli.StringFlag{
+		Name:  "slasher-datadir",
+		Usage: "Directory for the slasher database",
+		Value: cmd.DefaultDataDir(),
 	}
 )

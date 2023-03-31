@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
-	"github.com/prysmaticlabs/prysm/v3/runtime/version"
+	ethpb "github.com/prysmaticlabs/prysm/v4/proto/prysm/v1alpha1"
+	"github.com/prysmaticlabs/prysm/v4/runtime/version"
 )
 
 // ToProtoUnsafe returns the pointer value of the underlying
@@ -126,6 +126,7 @@ func (b *BeaconState) ToProtoUnsafe() interface{} {
 			LatestExecutionPayloadHeader: b.latestExecutionPayloadHeaderCapella,
 			NextWithdrawalIndex:          b.nextWithdrawalIndex,
 			NextWithdrawalValidatorIndex: b.nextWithdrawalValidatorIndex,
+			HistoricalSummaries:          b.historicalSummaries,
 		}
 	default:
 		return nil
@@ -252,6 +253,7 @@ func (b *BeaconState) ToProto() interface{} {
 			LatestExecutionPayloadHeader: b.latestExecutionPayloadHeaderCapellaVal(),
 			NextWithdrawalIndex:          b.nextWithdrawalIndex,
 			NextWithdrawalValidatorIndex: b.nextWithdrawalValidatorIndex,
+			HistoricalSummaries:          b.historicalSummariesVal(),
 		}
 	default:
 		return nil

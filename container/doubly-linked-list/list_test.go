@@ -3,8 +3,8 @@ package doublylinkedlist
 import (
 	"testing"
 
-	"github.com/prysmaticlabs/prysm/v3/testing/assert"
-	"github.com/prysmaticlabs/prysm/v3/testing/require"
+	"github.com/prysmaticlabs/prysm/v4/testing/assert"
+	"github.com/prysmaticlabs/prysm/v4/testing/require"
 )
 
 func TestAppend(t *testing.T) {
@@ -122,4 +122,37 @@ func TestRemove(t *testing.T) {
 		list.Remove(n)
 		require.Equal(t, 2, list.len)
 	})
+}
+
+func TestNodeCopy(t *testing.T) {
+	first := NewNode(1)
+	second := first.Copy()
+	v, err := second.Value()
+	require.NoError(t, err)
+	require.Equal(t, first.value, v)
+}
+
+func TestListCopy(t *testing.T) {
+	list := &List[int]{}
+	first := NewNode(1)
+	second := NewNode(2)
+	third := NewNode(3)
+	list.Append(first)
+	list.Append(second)
+	list.Append(third)
+
+	copied := list.Copy()
+	require.Equal(t, 3, copied.Len())
+	m := copied.First()
+	for n := list.First(); n != nil; n = n.next {
+		nv, err := n.Value()
+		require.NoError(t, err)
+		mv, err := m.Value()
+		require.NoError(t, err)
+		require.Equal(t, nv, mv)
+
+		require.NotEqual(t, n, m)
+		m, err = m.Next()
+		require.NoError(t, err)
+	}
 }
